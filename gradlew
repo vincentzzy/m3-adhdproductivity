@@ -4,7 +4,7 @@
 # gradle/wrapper/gradle-wrapper.properties is authoritative, and ordinary
 # `gradle wrapper` can regenerate a canonical wrapper at any time.
 set -eu
-VERSION=9.1.0
+VERSION=9.3.1
 BASE="${GRADLE_USER_HOME:-$HOME/.gradle}/wrapper/dists/gradle-${VERSION}-bin/now"
 GRADLE="$BASE/gradle-${VERSION}/bin/gradle"
 if [ ! -x "$GRADLE" ]; then
