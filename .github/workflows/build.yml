@@ -90,6 +90,32 @@ jobs:
           tail -20 test.log
           exit $rc
 
+      - name: Verify APK contents
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          AAPT="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)"
+          {
+            echo "=== badging"
+            "$AAPT" dump badging "$APK" 2>&1 | head -25
+            echo
+            echo "=== permissions"
+            "$AAPT" dump permissions "$APK" 2>&1
+            echo
+            echo "=== declared components"
+            "$AAPT" dump xmltree --file AndroidManifest.xml "$APK" 2>&1 \
+              | grep -E "E: (activity|service|receiver)|A: http://schemas.android.com/apk/res/android:name" \
+              | head -60
+            echo
+            echo "=== size"
+            ls -l "$APK"
+          } > verify.txt
+          cat verify.txt
+          if [ -n "${GITHUB_TOKEN:-}" ]; then
+            CI_REPORT_TITLE=apk GITHUB_TOKEN="$GITHUB_TOKEN" bash ci/report.sh verify.txt || true
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload downloadable APK artifact
         uses: actions/upload-artifact@v4
         with:
