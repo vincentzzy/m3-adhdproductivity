@@ -1,0 +1,1 @@
+<resources><style name="Theme.TASKD" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#B9A7FF</item><item name="android:statusBarColor">#11121A</item><item name="android:navigationBarColor">#11121A</item><item name="android:windowLightStatusBar">false</item></style></resources>

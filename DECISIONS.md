@@ -1,0 +1,35 @@
+# Decisions
+
+- Name: kept the requested name **TASKD**; alternatives considered were **Nextlight** and **Smallstep**, but TASKD is shortest to scan.
+- Product scope: launched directly into three tabs, with NOW as default; no projects, tags, calendar, analytics, login, or network permission.
+- Task placement: a new task goes to NOW if free, then TODAY, then quietly to LATER; this removes a sorting decision at capture time.
+- Bucket rules: NOW accepts one item and TODAY accepts three; full destinations reject a move rather than silently displacing another task.
+- Storage: Room is the durable source of task/session/anchor/streak data; DataStore holds only small user preferences.
+- Persistence: task rows use local wall-clock epoch timestamps and database migrations are destructive in this MVP; there is no cross-device sync to preserve.
+- UI: dark-first charcoal surfaces and one lavender accent were chosen for low visual noise and to avoid red/failure semantics.
+- Expressive fallback: pinned Material 3 is 1.4.0, but the UI uses stable MaterialTheme/darkColorScheme and standard Material components rather than relying on uncertain new expressive component signatures before compilation could be run.
+- Motion: the single focus dial changes between circular and rounded-square silhouettes over 320 ms; calm mode sets its transition duration to zero; no cold-start entrance animation is used.
+- Motion API substitution: the focus silhouette is implemented with a rounded-corner shape animation instead of androidx.graphics.shapes Morph, because Morph's Android Path integration could not be compile-verified in this runner.
+- Shape API: graphics-shapes 1.0.1 is pinned for a future verified morph implementation; it is not currently invoked by app code.
+- Dynamic colors: omitted to keep the accent and contrast predictable across Android versions; a hand-selected high-contrast fallback is used on all versions.
+- Notifications: there is one stable-ID, ongoing, silent notification with Done/Snooze/Start actions; snooze updates that same notification and schedules its restoration after 30 minutes, rather than creating another notification.
+- Notification schedule: timed anchor pings and deadline escalation are deferred; there are no periodic notification workers in this build, so the app cannot exceed the daily ping ceiling.
+- Permission behavior: Android 13+ notification permission is requested on first launch; if denied, Android suppresses the anchor notification.
+- Voice: platform SpeechRecognizer is attempted through the system recognition intent; availability and offline recognition depend on the device's installed speech service.
+- Share capture: plain-text Android SEND intents populate the always-visible capture field; the task is saved when the user taps Add.
+- Quick Settings: the tile opens a one-field capture activity; Android requires the user to add the tile manually from Quick Settings edit mode.
+- Widget: Glance backs a compact home widget with Open and Capture launch targets; dynamic task rows and interactive checkboxes are deferred because this first pass uses a minimal reliable widget surface.
+- Focus: the duration is adjustable and the focus dialog has a working start/pause affordance; this MVP does not yet persist/count down sessions or connect sessions to task actual-time records.
+- Noise: brown noise is synthesized as low-amplitude filtered random PCM through AudioTrack, with no audio assets; it is started/stopped from the focus dialog.
+- Breakdown: a deterministic offline heuristic returns four starter prompts; this avoids network/LLM dependencies and is not exposed as an automatic task rewrite.
+- Time screen: the clock is local time and the day budget assumes 16 waking hours; no deadline or break history is fabricated when those records do not exist.
+- Estimates: the actual/estimate multiplier is a pure derived rule and appears only after ten valid samples; task editing/logging UI for those samples is not yet wired.
+- Streaks: pure grace-day logic and persisted schema are included; streak updates/protected-day copy are not yet connected to task completion UI.
+- Welcome-back: no backlog wall is created because the UI shows only active NOW/TODAY by default and LATER is collapsed; a dated welcome-back message is not yet implemented.
+- Export/import: deferred from this MVP pass; no file picker or JSON restore flow is exposed yet.
+- Progress: cards are positive-only and never display a negative trend; focus/accuracy values are placeholders until session and estimate logging are wired.
+- Accessibility: large primary controls have semantic labels; the interface uses flexible Compose layouts and avoids fixed text heights, though large-font TalkBack/device testing remains necessary.
+- Device targets: minSdk 26, compile/target SDK 35, portrait-only, Java 17; API 35 is a broadly supported stable target selected for reproducible CI.
+- Build tools: AGP 8.9.2, Kotlin 2.1.10, KSP 2.1.10-1.0.31, Gradle 8.11.1; all direct dependency versions are pinned in `gradle/libs.versions.toml`.
+- Wrapper: `gradlew` bootstraps the pinned Gradle distribution from the standard wrapper URL; the standard wrapper JAR could not be fetched in this isolated runner, so the small shell bootstrap is committed instead.
+- Verification: this runner has no Java runtime, Android SDK, or installed Gradle; compilation and device behavior cannot honestly be claimed until CI or an Android-equipped environment runs the documented commands.

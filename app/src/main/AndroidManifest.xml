@@ -1,0 +1,19 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application android:theme="@style/Theme.TASKD" android:label="TASKD" android:allowBackup="true" android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+            <intent-filter><action android:name="android.intent.action.SEND"/><category android:name="android.intent.category.DEFAULT"/><data android:mimeType="text/plain"/></intent-filter>
+        </activity>
+        <activity android:name=".platform.QuickCaptureActivity" android:exported="true" android:theme="@style/Theme.TASKD" android:excludeFromRecents="true" android:screenOrientation="portrait" />
+        <receiver android:name=".platform.TaskActionReceiver" android:exported="false" />
+        <service android:name=".platform.CaptureTileService" android:label="Capture a task" android:icon="@android:drawable/ic_input_add" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+            <meta-data android:name="android.service.quicksettings.ACTIVE_TILE" android:value="false" />
+        </service>
+        <receiver android:name=".widget.TaskdWidgetReceiver" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/taskd_widget_info" />
+        </receiver>
+    </application>
+</manifest>
