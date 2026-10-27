@@ -5,6 +5,12 @@ on:
   pull_request:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      drive_upload_session:
+        description: Temporary Google Drive resumable-upload session URI
+        required: false
+        type: string
 permissions:
   contents: write
 jobs:
@@ -12,6 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Mask temporary Drive upload session
+        if: github.event_name == 'workflow_dispatch' && inputs.drive_upload_session != ''
+        env:
+          DRIVE_UPLOAD_SESSION: ${{ inputs.drive_upload_session }}
+        run: echo "::add-mask::$DRIVE_UPLOAD_SESSION"
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -70,6 +81,42 @@ jobs:
           name: TASKD-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Upload APK directly to Google Drive
+        if: github.event_name == 'workflow_dispatch' && inputs.drive_upload_session != ''
+        env:
+          DRIVE_UPLOAD_SESSION: ${{ inputs.drive_upload_session }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import urllib.request
+
+          apk = pathlib.Path('app/build/outputs/apk/debug/app-debug.apk')
+          upload_url = os.environ['DRIVE_UPLOAD_SESSION']
+          size = apk.stat().st_size
+          chunk_size = 256 * 1024
+          offset = 0
+          with apk.open('rb') as source:
+              while offset < size:
+                  chunk = source.read(min(chunk_size, size - offset))
+                  final = offset + len(chunk) == size
+                  headers = {
+                      'Content-Type': 'application/vnd.android.package-archive',
+                      'X-Goog-Upload-Offset': str(offset),
+                      'X-Goog-Upload-Total-Size': str(size),
+                      'X-Goog-Upload-Command': 'upload, finalize' if final else 'upload',
+                  }
+                  request = urllib.request.Request(upload_url, data=chunk, headers=headers, method='PUT')
+                  with urllib.request.urlopen(request, timeout=120) as response:
+                      state = response.headers.get('X-Goog-Upload-Status')
+                      if state not in ('active', 'final'):
+                          raise RuntimeError(f'Unexpected Drive upload state: {state}')
+                      if final:
+                          file = json.loads(response.read().decode('utf-8'))
+                          print(f"Drive upload complete: {file.get('name')} ({file.get('id')})")
+                      offset += len(chunk)
+          PY
       - name: Attach APK to published release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2

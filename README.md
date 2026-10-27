@@ -18,7 +18,7 @@ Alternatives considered: **Nextlight** and **Smallstep**. Chosen name: **TASKD**
 - Java 17, Android SDK platform 36, minSdk 26, targetSdk 36.
 - Gradle 9.1.0, AGP 9.0.1, Kotlin 2.2.10 (AGP built-in Kotlin plus the Kotlin Compose plugin), KSP 2.2.10-2.0.2.
 - Dependency versions are pinned in `gradle/libs.versions.toml` (Compose BOM 2026.06.01, Material 3 1.4.0, Room 2.7.0, DataStore 1.1.4, WorkManager 2.10.0, Glance 1.1.1, graphics-shapes 1.0.1, among others).
-- Run `./gradlew assembleDebug` and `./gradlew test`. The CI workflow builds the debug APK and uploads it as an artifact on pushes to main; when a GitHub Release is published, it also attaches the APK.
+- Run `./gradlew assembleDebug` and `./gradlew test`. The CI workflow builds the debug APK and uploads it as an artifact on pushes to main or this session branch; when a GitHub Release is published, it also attaches the APK. A manual workflow dispatch can stream a built APK directly into Drive using a temporary resumable-upload session.
 - `gradlew` is a small shell bootstrap for the pinned distribution because the runner could not retrieve the standard wrapper JAR. It needs a JDK, curl, and unzip.
 
 ## Product coverage and known gaps

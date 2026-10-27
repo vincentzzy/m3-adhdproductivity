@@ -35,4 +35,5 @@
 - KSP/AGP 9 seam: set `android.disallowKotlinSourceSets=false` because the pinned KSP processor registers generated sources through Kotlin source sets, as required by AGP's own diagnostic.
 - Compose BOM: pinned 2026.06.01 to align the stable Compose UI line with API 36 rather than the newer Compose line requiring API 37.
 - Wrapper: `gradlew` bootstraps the pinned Gradle distribution from the standard wrapper URL; the standard wrapper JAR could not be fetched in this isolated runner, so the small shell bootstrap is committed instead.
-- Verification: this runner has no Java runtime, Android SDK, or installed Gradle; compilation and device behavior cannot honestly be claimed until CI or an Android-equipped environment runs the documented commands.
+- Artifact transfer: local GitHub Actions artifact downloads are blocked in this sandbox, so an optional manual CI dispatch accepts a temporary, one-use Drive resumable-upload URI and streams the APK in 256 KiB chunks directly to the user's Drive without adding credentials to source control.
+- Verification: this runner has no Java runtime, Android SDK, or installed Gradle; the Android build/test result is verified on GitHub-hosted CI, while local installation and device behavior remain untested.
