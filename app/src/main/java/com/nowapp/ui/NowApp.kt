@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -142,6 +143,7 @@ private fun MainSurface(vm: NowViewModel, prefs: Prefs, openFocusOnLaunch: Boole
             onExit = { focusTarget = null },
         )
     } else {
+        Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
@@ -268,6 +270,7 @@ private fun MainSurface(vm: NowViewModel, prefs: Prefs, openFocusOnLaunch: Boole
                     TextButton(onClick = { pendingImport = null }) { Text("Cancel") }
                 },
             )
+        }
         }
     }
 }

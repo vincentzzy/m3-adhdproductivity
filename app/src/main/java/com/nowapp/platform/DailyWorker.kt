@@ -28,10 +28,11 @@ class DailyWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
             val tasks = ServiceLocator.tasks.allOnce()
             val todayTasks = BucketRules.todayTasks(tasks)
-            val top = BucketRules.nowTask(tasks) ?: todayTasks.firstOrNull()
+            val nowTask = BucketRules.nowTask(tasks)
+            val top = nowTask ?: todayTasks.firstOrNull()
             Notifications.showOngoing(
                 context = context,
-                todayCount = todayTasks.size,
+                todayCount = todayTasks.size + if (nowTask != null) 1 else 0,
                 topTaskId = top?.id,
                 topTaskTitle = top?.title,
             )

@@ -106,6 +106,10 @@ jobs:
               | grep -E "E: (activity|service|receiver)|A: http://schemas.android.com/apk/res/android:name" \
               | head -60
             echo
+            echo "=== widget receiver + provider metadata"
+            "$AAPT" dump xmltree --file AndroidManifest.xml "$APK" 2>&1 \
+              | grep -E "NowWidgetReceiver|android.appwidget.provider|now_widget_info|APPWIDGET_UPDATE" | head -10
+            echo
             echo "=== size"
             ls -l "$APK"
           } > verify.txt
