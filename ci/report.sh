@@ -21,7 +21,7 @@ import json, os, sys
 print(json.dumps({"body": "### CI " + sys.argv[1] + "\n\n```\n" + os.environ.get("CI_REPORT_BODY","") + "\n```"}))
 PY
 )
-curl -sS -X POST \
+curl -sS -X POST -w "post:%{http_code}\n" \
   -H "Authorization: token $GITHUB_TOKEN" \
   -H "Accept: application/vnd.github+json" \
   "${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \

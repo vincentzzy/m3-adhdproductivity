@@ -1,5 +1,7 @@
 name: versions
 on: push
+permissions:
+  contents: write
 jobs:
   discover:
     runs-on: ubuntu-latest
