@@ -1,0 +1,197 @@
+name: Android debug build
+
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      drive_upload_session:
+        description: Temporary Google Drive resumable-upload session URI
+        required: false
+        type: string
+  # Delivery channel used by the maintaining agent: the temporary Drive session is
+  # passed in the payload, never committed to the repository.
+  repository_dispatch:
+    types: [drive_upload]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The temporary Drive session can arrive three ways: a workflow_dispatch
+      # input, a repository_dispatch payload, or a "drive-session: <uri>" line in
+      # the commit message. It is masked immediately so it never reaches the logs.
+      - name: Resolve and mask the temporary Drive upload session
+        env:
+          DISPATCH_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
+          COMMIT_SESSION: ${{ github.event.client_payload.drive_upload_session }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          SESSION="${DISPATCH_SESSION:-}"
+          if [ -z "$SESSION" ] && [ -n "${COMMIT_MESSAGE:-}" ]; then
+            SESSION="$(printf '%s' "$COMMIT_MESSAGE" | grep -o 'drive-session: [^ ]*' | head -1 | sed 's/drive-session: //')"
+          fi
+          if [ -n "$SESSION" ]; then
+            echo "::add-mask::$SESSION"
+            echo "::add-mask::$(echo "$SESSION" | cut -c1-40)"
+            {
+              echo "SESSION_RESOLVED=yes"
+              echo "DRIVE_UPLOAD_SESSION=$SESSION"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Locate Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$SDK/cmdline-tools" -type f -name sdkmanager 2>/dev/null | sort -V | tail -1)"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          ls "$SDK/platforms" || true
+
+      - name: Install Android SDK 37 packages
+        run: |
+          yes | "$ANDROID_SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          # The 37 line ships both a bare platform and point releases; install
+          # whichever the runner actually offers, preferring build-tools 37.0.0.
+          for pkg in "platforms;android-37" "platforms;android-37.1" "platforms;android-37.0" "build-tools;37.0.0"; do
+            "$ANDROID_SDKMANAGER" "$pkg" > /tmp/sdk-install.log 2>&1 || true
+          done
+          tail -5 /tmp/sdk-install.log || true
+          ls "$ANDROID_HOME/platforms" || true
+          ls "$ANDROID_HOME/build-tools" || true
+
+      - name: Build debug APK
+        run: |
+          set +e
+          ./gradlew --no-daemon --stacktrace assembleDebug > build.log 2>&1
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            {
+              echo "=== COMPILER / BUILD ERRORS"
+              grep -E "^e: |error:|What went wrong|Execution failed|Unresolved reference|Cannot access|Could not resolve|Could not find|No matching variant|FAILURE:|requires Android Gradle|requires compileSdk|Minimum supported Gradle|requires.*Gradle" build.log | head -250
+              echo
+              echo "=== TAIL"
+              tail -60 build.log
+            } > report.txt
+            CI_REPORT_TITLE=build GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" bash ci/report.sh report.txt || true
+          fi
+          tail -30 build.log
+          exit $rc
+
+      - name: Run unit tests
+        run: |
+          set +e
+          ./gradlew --no-daemon test > test.log 2>&1
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            {
+              echo "=== TEST FAILURES"
+              grep -E "FAILED|tests? completed|expected:|but was:|junit.framework|AssertionError|Caused by" test.log | head -200
+              echo
+              echo "=== TAIL"
+              tail -60 test.log
+            } > report.txt
+            CI_REPORT_TITLE=test GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" bash ci/report.sh report.txt || true
+          fi
+          tail -20 test.log
+          exit $rc
+
+      - name: Verify APK contents
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          AAPT="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)"
+          {
+            echo "=== badging"
+            "$AAPT" dump badging "$APK" 2>&1 | head -25
+            echo
+            echo "=== permissions"
+            "$AAPT" dump permissions "$APK" 2>&1
+            echo
+            echo "=== declared components"
+            "$AAPT" dump xmltree --file AndroidManifest.xml "$APK" 2>&1 \
+              | grep -E "E: (activity|service|receiver)|A: http://schemas.android.com/apk/res/android:name" \
+              | head -60
+            echo
+            echo "=== widget receiver + provider metadata"
+            "$AAPT" dump xmltree --file AndroidManifest.xml "$APK" 2>&1 \
+              | grep -E "NowWidgetProvider|android.appwidget.provider|now_widget_info|APPWIDGET_UPDATE" | head -10
+            echo
+            echo "=== size"
+            ls -l "$APK"
+          } > verify.txt
+          cat verify.txt
+          if [ -n "${GITHUB_TOKEN:-}" ]; then
+            CI_REPORT_TITLE=apk GITHUB_TOKEN="$GITHUB_TOKEN" bash ci/report.sh verify.txt || true
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload downloadable APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Now-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish/refresh the downloadable release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: now-debug
+          name: Now — latest debug build
+          body: |
+            Installable debug APK of Now, built automatically from ${{ github.sha }}.
+            See INSTALL.md for sideloading instructions. No account, no network permission, fully offline.
+          files: app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
+
+      - name: Attach APK to published release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK directly to Google Drive
+        if: env.SESSION_RESOLVED == 'yes'
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.request
+          apk = pathlib.Path('app/build/outputs/apk/debug/app-debug.apk')
+          upload_url = os.environ['DRIVE_UPLOAD_SESSION']
+          size = apk.stat().st_size
+          chunk_size = 256 * 1024
+          offset = 0
+          with apk.open('rb') as source:
+              while offset < size:
+                  chunk = source.read(min(chunk_size, size - offset))
+                  final = offset + len(chunk) == size
+                  headers = {
+                      'Content-Type': 'application/vnd.android.package-archive',
+                      'X-Goog-Upload-Offset': str(offset),
+                      'X-Goog-Upload-Total-Size': str(size),
+                      'X-Goog-Upload-Command': 'upload, finalize' if final else 'upload',
+                  }
+                  request = urllib.request.Request(upload_url, data=chunk, headers=headers, method='PUT')
+                  with urllib.request.urlopen(request, timeout=120) as response:
+                      state = response.headers.get('X-Goog-Upload-Status')
+                      if state not in ('active', 'final'):
+                          raise RuntimeError(f'Unexpected Drive upload state: {state}')
+                      if final:
+                          file = json.loads(response.read().decode('utf-8'))
+                          print(f"Drive upload complete: {file.get('name')} ({file.get('id')})")
+                  offset += len(chunk)
+          PY

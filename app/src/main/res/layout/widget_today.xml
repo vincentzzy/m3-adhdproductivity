@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The home-screen widget, built with plain RemoteViews.
+
+  Deliberately boring on purpose: LinearLayout and TextView only. Every view here
+  is inflatable by any launcher on any API level since 26, with no composition,
+  no recomposition and no framework hand-off that can fail invisibly.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="Today"
+            android:textColor="#FFECECF3"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_add"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_pill"
+            android:gravity="center"
+            android:text="+"
+            android:textColor="#FFB8A1FF"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:maxLines="2"
+        android:text="Nothing on today."
+        android:textColor="#FF9A9AAE"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/widget_row1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_check1"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_pill"
+            android:contentDescription="Done"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#FFB8A1FF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/widget_title1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#FFECECF3"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_row2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_check2"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_pill"
+            android:contentDescription="Done"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#FFB8A1FF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/widget_title2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#FFECECF3"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_row3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_check3"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_pill"
+            android:contentDescription="Done"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#FFB8A1FF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/widget_title3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#FFECECF3"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:maxLines="1"
+        android:text="Later stays quiet"
+        android:textColor="#FF9A9AAE"
+        android:textSize="12sp" />
+</LinearLayout>

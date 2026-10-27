@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Notifications (API 33+ runtime grant), exact anchor alarms, and boot restore.
+         There is deliberately NO INTERNET permission: the app is fully offline. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <application
+        android:name=".NowApplication"
+        android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Now">
+
+        <!-- Single activity. Portrait only, per spec. -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Capture surface used by the Quick Settings tile and the widget's "+" target.
+             Floats over the launcher, no recents entry, keyboard opens immediately. -->
+        <activity
+            android:name=".platform.QuickCaptureActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Now.Capture"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
+
+        <!-- Share-sheet target: captures text straight into LATER, no UI. -->
+        <activity
+            android:name=".platform.ShareCaptureActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@style/Theme.Now.Capture">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- Quick Settings tile. -->
+        <service
+            android:name=".platform.CaptureTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Ongoing-notification actions: Done / Snooze 30m / Start focus. -->
+        <receiver
+            android:name=".platform.NotificationActionReceiver"
+            android:exported="false" />
+
+        <!-- Exact anchor alarms. -->
+        <receiver
+            android:name=".platform.PingReceiver"
+            android:exported="false" />
+
+        <!-- Widget taps: explicit broadcast from our own PendingIntent. -->
+        <receiver
+            android:name=".platform.WidgetToggleReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".platform.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Glance widget (~4x2). -->
+        <receiver
+            android:name=".widget.NowWidgetProvider"
+            android:label="@string/widget_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/now_widget_info" />
+        </receiver>
+    </application>
+</manifest>
