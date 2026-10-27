@@ -5,10 +5,7 @@ on:
     branches: [main, 'arena/**']
   pull_request:
   release:
-    # 'edited' is the agent's delivery channel: the temporary Drive resumable
-    # session is written into the release notes, used once, then removed again.
-    # Nothing is committed to the repository and no long-lived credential exists.
-    types: [published, edited]
+    types: [published]
   workflow_dispatch:
     inputs:
       drive_upload_session:
@@ -29,18 +26,25 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # The temporary Drive session can arrive three ways: a workflow_dispatch
+      # input, a repository_dispatch payload, or a "drive-session: <uri>" line in
+      # the commit message. It is masked immediately so it never reaches the logs.
       - name: Resolve and mask the temporary Drive upload session
-        if: (github.event_name == 'workflow_dispatch' && inputs.drive_upload_session != '') || github.event_name == 'repository_dispatch' || github.event_name == 'release'
         env:
-          DRIVE_UPLOAD_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
-          RELEASE_BODY: ${{ github.event.release.body }}
+          DISPATCH_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          if [ -z "${DRIVE_UPLOAD_SESSION:-}" ] && [ -n "${RELEASE_BODY:-}" ]; then
-            DRIVE_UPLOAD_SESSION="$(printf '%s' "$RELEASE_BODY" | grep -o 'drive-session: [^ ]*' | head -1 | sed 's/drive-session: //')"
+          SESSION="${DISPATCH_SESSION:-}"
+          if [ -z "$SESSION" ] && [ -n "${COMMIT_MESSAGE:-}" ]; then
+            SESSION="$(printf '%s' "$COMMIT_MESSAGE" | grep -o 'drive-session: [^ ]*' | head -1 | sed 's/drive-session: //')"
           fi
-          if [ -n "${DRIVE_UPLOAD_SESSION:-}" ]; then
-            echo "::add-mask::$DRIVE_UPLOAD_SESSION"
-            echo "SESSION_RESOLVED=yes" >> "$GITHUB_ENV"
+          if [ -n "$SESSION" ]; then
+            echo "::add-mask::$SESSION"
+            echo "::add-mask::$(echo "$SESSION" | cut -c1-40)"
+            {
+              echo "SESSION_RESOLVED=yes"
+              echo "DRIVE_UPLOAD_SESSION=$SESSION"
+            } >> "$GITHUB_ENV"
           fi"
 
       - uses: actions/setup-java@v5
@@ -161,9 +165,7 @@ jobs:
           files: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK directly to Google Drive
-        if: env.SESSION_RESOLVED == 'yes' && github.event_name == 'release'
-        env:
-          DRIVE_UPLOAD_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
+        if: env.SESSION_RESOLVED == 'yes'
         run: |
           python3 - <<'PY'
           import json, os, pathlib, urllib.request
