@@ -31,7 +31,16 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | "$ANDROID_SDKMANAGER" --licenses || true
-          "$ANDROID_SDKMANAGER" "platforms;android-37" "build-tools;37.0.0" "platform-tools"
+          set +e
+          "$ANDROID_SDKMANAGER" --list > sdk-list.log 2>&1
+          grep -E 'platforms;android-37|build-tools;37|platform-tools' sdk-list.log | tail -n 20
+          "$ANDROID_SDKMANAGER" "platforms;android-37" "build-tools;37.0.0" "platform-tools" > sdk-install.log 2>&1
+          result=$?
+          tail -n 25 sdk-install.log
+          if [ "$result" -ne 0 ]; then
+            grep -Ei 'not found|failed|error|exception|warning|package path|could not|unable' sdk-install.log | tail -n 15 | while IFS= read -r line; do echo "::error::$line"; done
+            exit "$result"
+          fi
       - name: Build debug APK
         id: assemble
         run: |
