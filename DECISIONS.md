@@ -22,9 +22,9 @@ toolchain does not actually ship. One line each: the decision, then the reason.
 
 | # | Decision | Reason |
 |---|----------|--------|
-| 11 | AGP 9.0.1, Gradle 9.1.0, Kotlin 2.2.10, KSP 2.2.10-2.0.2, Java 17. | This exact combination built green in this repo earlier; no reason to gamble. |
+| 11 | AGP **9.1.0**, Gradle **9.3.1**, Kotlin 2.2.10, KSP 2.2.10-2.0.2, Java 17. | Derived, not guessed: material3 1.5.0-beta02's AAR metadata requires AGP 9.1.0 (`checkDebugAarMetadata` failed on 9.0.1), and AGP 9.1.0 requires Gradle >= 9.3.1, which failed the next run until the wrapper moved with it. Both bumps are one atomic change. |
 | 12 | `compileSdk = 37`, `targetSdk = 36`, `minSdk = 26`. | material3 1.5.0-beta02 and compose-ui 1.12.1 declare `minCompileSdk=37` in their AAR metadata, so 37 is mandatory; targetSdk stays at 36 (behaviours we can reason about, and it is a sideloaded personal app). |
-| 13 | Gradle wrapper committed as a bootstrap `gradlew` script that fetches the pinned 9.1.0 distribution; the binary wrapper JAR is not committed. | The JAR could not be fetched in the authoring sandbox; the pinned distribution URL in gradle-wrapper.properties is authoritative and `gradle wrapper` regenerates a canonical wrapper. |
+| 13 | Gradle wrapper committed as a bootstrap `gradlew` script that fetches the pinned **9.3.1** distribution; the binary wrapper JAR is not committed. | The JAR could not be fetched in the authoring sandbox; the pinned distribution URL in gradle-wrapper.properties is authoritative and `gradle wrapper` regenerates a canonical wrapper. |
 | 14 | **material3 = 1.5.0-beta02** instead of a "stable" version. | Verified by bytecode inspection: 1.4.0 (latest stable) ships **no** expressive components at all — no MaterialShapes, ButtonGroup, SplitButton, ToggleButton, LoadingIndicator. 1.5.0-beta02 is the only published line that has them. Everything used was checked against the actual artifact before writing the call site. |
 | 15 | Compose BOM 2026.09.00 for ui/foundation/runtime (1.12.1), with material3 pinned separately. | The BOM pins material3 1.4.0, so material3 must be overridden to get expressive; the rest of the BOM keeps the compose versions mutually consistent. |
 | 16 | No navigation-compose: tab state is a single `rememberSaveable` int and focus mode is a nullable target. | Three destinations; a navigation graph adds a dependency and a cold-start cost for nothing. |
@@ -38,7 +38,7 @@ toolchain does not actually ship. One line each: the decision, then the reason.
 
 | # | Spec asked for | What shipped in material3 1.5.0-beta02 | Decision |
 |---|----------------|----------------------------------------|----------|
-| 22 | `MaterialExpressiveTheme` | Present, but in `MaterialThemeKt`, and takes `(colorScheme, motionScheme, shapes, typography, content)` | Used as-is. |
+| 22 | `MaterialExpressiveTheme` | Present in `MaterialThemeKt`, signature `(colorScheme, motionScheme, shapes, typography, content)`; expressive components additionally sit behind `LocalUsingExpressiveTheme`. | Used as-is, wrapped once at the root in `ui/theme/Theme.kt`. |
 | 23 | `dynamicExpressiveDarkColorScheme()` | **Absent.** Only `dynamicLight/DarkColorScheme` exist. | Hand-built expressive dark scheme (`ui/theme/Theme.kt`) with one accent hue. Also guarantees the single-hue rule, which dynamic colour would break. |
 | 24 | `MotionScheme.expressive()` | Present (`MotionScheme.Companion.expressive()`) | Used; calm mode or system "remove animations" switches to `MotionScheme.standard()` and snaps all tweens. |
 | 25 | `MaterialShapes` | Present (circle … heart, 35 shapes) | Used as container accents (`Clover4Leaf` for the Now marker, `Pill`/`SoftBurst` available). |
@@ -77,3 +77,10 @@ toolchain does not actually ship. One line each: the decision, then the reason.
 | 48 | No foreground service, no analytics SDK, no ads, no login. | Every one of those is a maintenance or trust cost with no upside for one user. |
 | 49 | `error` color role set to neutral grey in the `ColorScheme`. | Even an accidental use of the error colour cannot paint a red pixel. |
 | 50 | Palette lives as `Long` ARGB constants so `PaletteTest` can assert "no red" and accent contrast without an Android runtime. | Makes the "zero red pixels" rule a test rather than a promise. |
+| 51 | Completing a task that had an estimate offers one optional prompt: "How long did that take?" Six one-tap chips, and Skip is the default. | The multiplier can only calibrate if actuals exist, but asking is a cost. One optional tap, never a form, never blocking, and the prompt is suppressed after the first skip of the day. |
+| 52 | Estimated-vs-actual ratio is derived on the fly from stored actuals, never stored as a factor. | A stored factor becomes a number the user can be wrong about; deriving it means it can never be stale or "broken". |
+| 53 | Task menu adds "Due in two hours" as a single tap, no date picker. | A date picker is a decision. A hard deadline two hours out is the only deadline this app actually escalates on, so it gets one tap. |
+| 54 | "How long will it take?" is a six-chip sheet with Clear, not a free-text field. | Typing a number is a keyboard; picking one is a tap. Estimates exist only to feed the multiplier. |
+| 55 | `TimeMath` deadline helpers take `Long` millis, and the UI passes `System.currentTimeMillis()` directly. | The `Instant` overloads stay for domain tests; the UI avoids constructing `Instant`s in composables. |
+| 56 | Overlays (celebration, minute picker, import sheet) are siblings inside the shell's `Box`, not inside the `Scaffold` content lambda. | The content lambda is vertically scrollable, so a dialog placed there is scrolled out of view on small screens. |
+| 57 | The Drive handoff uses a **resumable upload session** rather than storing any Google credential. | The session is pre-authorised, scoped to a single file, and expires; a service-account JSON in the repo would be a permanent secret. The APK cannot be downloaded into the authoring sandbox, so the hosted runner streams it straight to Drive. |
