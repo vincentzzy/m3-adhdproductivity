@@ -2,20 +2,21 @@ package com.nowapp.widget
 
 import android.content.Context
 import android.graphics.Color as AndroidColor
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.action.actionParametersOf
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -26,32 +27,63 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.nowapp.MainActivity
 import com.nowapp.ServiceLocator
 import com.nowapp.domain.BucketRules
 import com.nowapp.domain.Task
 import com.nowapp.platform.QuickCaptureActivity
 import com.nowapp.platform.WidgetActions
-import kotlinx.coroutines.launch
 
 /**
  * The 4x2 home-screen widget: today's three things, each with a working
- * checkbox, plus a capture target. This is bucket #8 of the abandonment list —
- * the app has to be where the user already looks.
+ * checkbox, plus a capture target.
+ *
+ * Three rules this file learned the hard way:
+ *  - a Glance snapshot is a photograph, not a live view, so every action must
+ *    re-render explicitly (see [WidgetActions]);
+ *  - a control has to *look* like a control: the checkbox is a visible ring, and
+ *    the whole row is tappable, because most people tap the text;
+ *  - a failure must be visible somewhere. [WidgetDiagnostics] is that somewhere.
  */
 class NowWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val tasks = runCatching { ServiceLocator.tasks.allOnce() }.getOrElse { emptyList() }
-        provideContent { WidgetContent(tasks) }
+        val loaded = runCatching { ServiceLocator.tasks.allOnce() }
+        loaded.onFailure {
+            Log.e(TAG, "provideGlance could not read tasks", it)
+            WidgetDiagnostics.recordError(it.javaClass.simpleName + ": " + (it.message ?: ""))
+        }
+        val tasks = loaded.getOrDefault(emptyList())
+        Log.i(TAG, "provideGlance id=$id tasks=${tasks.size} ok=${loaded.isSuccess}")
+        WidgetDiagnostics.recordRefresh()
+        val failed = loaded.isFailure
+        provideContent { WidgetContent(tasks = tasks, failed = failed) }
+    }
+
+    private companion object {
+        const val TAG = "NowWidget"
     }
 }
 
 class NowWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = NowWidget()
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        Log.i("NowWidget", "receiver enabled")
+        WidgetUpdater.refresh(context)
+    }
+
+    override fun onUpdate(context: Context, appWidgetManager: android.appwidget.AppWidgetManager, appWidgetIds: IntArray) {
+        Log.i("NowWidget", "onUpdate ids=${appWidgetIds.size}")
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+    }
 }
 
 /** Refreshes every widget instance after a data change. */
@@ -60,6 +92,14 @@ object WidgetUpdater {
         val app = context.applicationContext
         ServiceLocator.scope.launch {
             runCatching { NowWidget().updateAll(app) }
+                .onSuccess {
+                    Log.i("NowWidget", "updateAll ok")
+                    WidgetDiagnostics.recordRefresh()
+                }
+                .onFailure {
+                    Log.e("NowWidget", "updateAll failed", it)
+                    WidgetDiagnostics.recordError(it.javaClass.simpleName + ": " + (it.message ?: ""))
+                }
         }
     }
 }
@@ -75,7 +115,7 @@ private val bodyStyle = TextStyle(color = text, fontSize = 14.sp)
 private val metaStyle = TextStyle(color = muted, fontSize = 12.sp)
 
 @Composable
-private fun WidgetContent(tasks: List<Task>) {
+private fun WidgetContent(tasks: List<Task>, failed: Boolean) {
     val today = BucketRules.todayTasks(tasks)
     val now = BucketRules.nowTask(tasks)
 
@@ -95,12 +135,12 @@ private fun WidgetContent(tasks: List<Task>) {
                 style = titleStyle,
                 modifier = GlanceModifier.defaultWeight(),
             )
-            // Capture target: one tap, straight to the input field.
             Box(
                 modifier = GlanceModifier
-                    .size(36.dp)
-                    .cornerRadius(18.dp)
+                    .size(40.dp)
+                    .cornerRadius(20.dp)
                     .background(surface)
+                    .semantics { contentDescription = "Add a task" }
                     .clickable(actionStartActivity<QuickCaptureActivity>()),
                 contentAlignment = Alignment.Center,
             ) {
@@ -108,7 +148,15 @@ private fun WidgetContent(tasks: List<Task>) {
             }
         }
 
-        if (today.isEmpty()) {
+        if (failed) {
+            Text(
+                text = "Could not read tasks. Open Now once, then refresh the widget.",
+                style = TextStyle(color = muted, fontSize = 12.sp),
+                modifier = GlanceModifier.padding(top = 10.dp),
+            )
+        }
+
+        if (today.isEmpty() && !failed) {
             Text(
                 text = if (now != null) "Now: ${now.title}" else "Nothing on today. Tap + to add one.",
                 style = metaStyle,
@@ -120,15 +168,19 @@ private fun WidgetContent(tasks: List<Task>) {
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = 8.dp)
+                    // The whole row opens the app: tapping the text and getting
+                    // nothing is the most common "the widget is broken" report.
+                    .clickable(actionStartActivity<MainActivity>()),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Working checkbox: tapping it completes the task without opening the app.
+                // A visible ring, 40dp, that reads as a checkbox before you touch it.
                 Box(
                     modifier = GlanceModifier
-                        .size(32.dp)
-                        .cornerRadius(16.dp)
+                        .size(40.dp)
+                        .cornerRadius(20.dp)
                         .background(surface)
+                        .semantics { contentDescription = "Done: ${task.title}" }
                         .clickable(
                             actionRunCallback<WidgetActions.ToggleDoneAction>(
                                 actionParametersOf(WidgetActions.TaskIdKey to task.id),
@@ -136,7 +188,18 @@ private fun WidgetContent(tasks: List<Task>) {
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (task.isDone) "x" else "", style = TextStyle(color = accent, fontSize = 14.sp))
+                    Box(
+                        modifier = GlanceModifier
+                            .size(28.dp)
+                            .cornerRadius(14.dp)
+                            .background(background),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (task.isDone) "✓" else "",
+                            style = TextStyle(color = accent, fontSize = 13.sp),
+                        )
+                    }
                 }
                 Box(modifier = GlanceModifier.width(10.dp)) {}
                 Text(
@@ -150,7 +213,7 @@ private fun WidgetContent(tasks: List<Task>) {
 
         // A tiny, quiet footer. Later never gets a count badge on purpose.
         Box(modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp)) {
-            Text("Later stays quiet", style = metaStyle)
+            Text(if (today.size > 3) "and ${today.size - 3} more" else "Later stays quiet", style = metaStyle)
         }
     }
 }

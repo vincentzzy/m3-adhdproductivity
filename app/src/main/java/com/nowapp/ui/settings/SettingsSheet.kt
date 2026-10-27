@@ -17,18 +17,25 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nowapp.data.Prefs
 import com.nowapp.data.db.AnchorEntity
 import com.nowapp.domain.TimeMath
+import com.nowapp.widget.WidgetDiagnostics
+import com.nowapp.widget.WidgetUpdater
+import kotlinx.coroutines.launch
 import java.time.LocalTime
 
 /**
@@ -56,6 +63,13 @@ fun SettingsSheet(
     var editingQuietEnd by remember { mutableStateOf(false) }
     var editingAwakeStart by remember { mutableStateOf(false) }
     var editingAnchor by remember { mutableStateOf<AnchorEntity?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val widgetStatus by WidgetDiagnostics.status.collectAsState()
+
+    // Probe once when the sheet opens, so the row reads as a live fact rather
+    // than a promise. This is the whole point: the widget can fail silently.
+    LaunchedEffect(Unit) { WidgetDiagnostics.probe(context) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -147,6 +161,17 @@ fun SettingsSheet(
                         TextButton(onClick = onExport) { Text("Export") }
                         TextButton(onClick = onImport) { Text("Import") }
                     }
+                },
+            )
+
+            SettingRow(
+                title = "Home-screen widget",
+                subtitle = widgetStatus,
+                trailing = {
+                    TextButton(onClick = {
+                        WidgetUpdater.refresh(context)
+                        scope.launch { WidgetDiagnostics.probe(context) }
+                    }) { Text("Refresh") }
                 },
             )
 

@@ -3,4 +3,5 @@
     <string name="app_name">Now</string>
     <string name="tile_label">Capture a task</string>
     <string name="widget_description">Today at a glance with checkboxes</string>
+    <string name="widget_name">Now — today</string>
 </resources>
