@@ -55,6 +55,7 @@ This is an MVP scaffold, not a claim that every item of the much larger request 
 ├── gradle
 │   ├── libs.versions.toml
 │   └── wrapper/gradle-wrapper.properties
+├── gradle.properties
 ├── build.gradle.kts
 ├── gradlew
 ├── INSTALL.md

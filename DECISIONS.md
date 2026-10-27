@@ -32,6 +32,7 @@
 - Device targets: minSdk 26, compile/target SDK 36, portrait-only, Java 17; API 36 is the latest stable platform target used here, while API 37 is still identified as a preview in Android's SDK setup guidance.
 - Build tools: AGP 9.0.1, built-in Kotlin 2.2.10 plus the Kotlin Compose plugin 2.2.10, KSP 2.2.10-2.0.2, Gradle 9.1.0; all direct dependency versions are pinned in `gradle/libs.versions.toml`.
 - AGP migration: removed `org.jetbrains.kotlin.android` because AGP 9 provides built-in Kotlin; retained the separately requested Kotlin Compose compiler plugin and use the new compilerOptions JVM target DSL.
+- KSP/AGP 9 seam: set `android.disallowKotlinSourceSets=false` because the pinned KSP processor registers generated sources through Kotlin source sets, as required by AGP's own diagnostic.
 - Compose BOM: pinned 2026.06.01 to align the stable Compose UI line with API 36 rather than the newer Compose line requiring API 37.
 - Wrapper: `gradlew` bootstraps the pinned Gradle distribution from the standard wrapper URL; the standard wrapper JAR could not be fetched in this isolated runner, so the small shell bootstrap is committed instead.
 - Verification: this runner has no Java runtime, Android SDK, or installed Gradle; compilation and device behavior cannot honestly be claimed until CI or an Android-equipped environment runs the documented commands.
