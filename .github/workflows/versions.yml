@@ -4,37 +4,41 @@ jobs:
   discover:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe Google Maven + Maven Central versions
+      - name: Probe artifact public API
         run: |
-          set -x
+          set -u
           G=https://dl.google.com/dl/android/maven2
-          M=https://repo1.maven.org/maven2
-          for p in \
-            com/android/tools/build/gradle \
-            androidx/compose/compose-bom \
-            androidx/compose/material3/material3 \
-            androidx/room/room-runtime \
-            androidx/glance/glance-appwidget \
-            androidx/datastore/datastore-preferences \
-            androidx/work/work-runtime-ktx \
-            androidx/graphics/graphics-shapes \
-            androidx/activity/activity-compose \
-            androidx/lifecycle/lifecycle-runtime-compose \
-            androidx/navigation/navigation-compose \
-            androidx/core/core-ktx \
-            androidx/core/core-splashscreen \
-            androidx/test/ext/junit \
-            androidx/test/espresso/espresso-core ; do
-            echo "### GOOGLE $p"
-            curl -s "$G/$p/maven-metadata.xml" | grep -oE '<version>[^<]+' | sed 's/<version>//' | tail -25 | tr '\n' ' '
-            echo
+          mkdir -p probe && cd probe
+          get() { curl -sfL "$1" -o "$2" && echo "OK $2" || echo "FAIL $1"; }
+          get $G/androidx/compose/material3/material3-android/1.4.0/material3-android-1.4.0.aar m3.aar
+          get $G/androidx/graphics/graphics-shapes/1.0.1/graphics-shapes-1.0.1.aar gs.aar
+          get $G/androidx/glance/glance-appwidget/1.1.1/glance-appwidget-1.1.1.aar glance.aar
+          for a in m3 gs glance; do
+            if [ -f $a.aar ]; then mkdir -p $a && (cd $a && unzip -qo ../$a.aar classes.jar && ls -l classes.jar); fi
           done
-          for p in \
-            org/jetbrains/kotlin/kotlin-gradle-plugin \
-            com/google/devtools/ksp/symbol-processing-api ; do
-            echo "### CENTRAL $p"
-            curl -s "$M/$p/maven-metadata.xml" | grep -oE '<version>[^<]+' | sed 's/<version>//' | tail -20 | tr '\n' ' '
-            echo
-          done
-          echo "### gradle wrapper available dists (services.gradle.org)"
-          curl -s https://services.gradle.org/versions/current | head -20
+          echo "===== MATERIAL3 EXPReSSIVE CLASSES"
+          unzip -l m3/classes.jar | grep -oE 'androidx/compose/material3/[A-Za-z0-9_$]*\.class' | grep -iE 'shapes|motion|expressive|buttongroup|splitbutton|wavy|loading|fabmenu|toggle' | sort -u | head -60
+          echo "===== MATERIALSHAPES"
+          javap -classpath m3/classes.jar androidx.compose.material3.MaterialShapes 2>&1 | head -60
+          echo "===== EXPRESSIVE THEME KT"
+          unzip -l m3/classes.jar | grep -oE 'androidx/compose/material3/[A-Za-z0-9_]*Kt\.class' | grep -iE 'expressive|dynamic|motion|shape' | sort -u
+          echo "===== DYNAMIC"
+          javap -classpath m3/classes.jar androidx.compose.material3.DynamicTonalPaletteKt 2>&1 | head -30
+          javap -classpath m3/classes.jar 'androidx.compose.material3.MaterialThemeKt' 2>&1 | head -40
+          echo "===== MOTION"
+          javap -classpath m3/classes.jar androidx.compose.material3.MotionScheme 2>&1 | head -40
+          echo "===== BUTTONGROUP"
+          javap -classpath m3/classes.jar androidx.compose.material3.ButtonGroupKt 2>&1 | head -40
+          echo "===== SPLITBUTTON"
+          javap -classpath m3/classes.jar androidx.compose.material3.SplitButtonKt 2>&1 | head -40
+          echo "===== FABMENU"
+          javap -classpath m3/classes.jar androidx.compose.material3.FloatingActionButtonMenuKt 2>&1 | head -30
+          echo "===== WAVY"
+          javap -classpath m3/classes.jar androidx.compose.material3.ProgressIndicatorKt 2>&1 | grep -iE 'wavy|LinearWavy' | head -20
+          echo "===== LOADING"
+          javap -classpath m3/classes.jar androidx.compose.material3.LoadingIndicatorKt 2>&1 | head -20
+          echo "===== GRAPHICS SHAPES"
+          unzip -l gs/classes.jar | grep -oE 'androidx/graphics/shapes/[A-Za-z0-9_$]*\.class' | sort -u | head -30
+          javap -classpath gs/classes.jar androidx.graphics.shapes.Morph 2>&1 | head -25
+          echo "===== GLANCE"
+          unzip -l glance/classes.jar | grep -oE 'androidx/glance/appwidget/[A-Za-z0-9_$]*\.class' | sort -u | head -50
