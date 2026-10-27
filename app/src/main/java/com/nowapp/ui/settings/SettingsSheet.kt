@@ -170,7 +170,10 @@ fun SettingsSheet(
                 trailing = {
                     TextButton(onClick = {
                         WidgetUpdater.refresh(context)
-                        scope.launch { WidgetDiagnostics.probe(context) }
+                        scope.launch {
+                            kotlinx.coroutines.delay(400)
+                            WidgetDiagnostics.probe(context)
+                        }
                     }) { Text("Refresh") }
                 },
             )

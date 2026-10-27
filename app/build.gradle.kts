@@ -66,7 +66,6 @@ dependencies {
 
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.work)
-    implementation(libs.androidx.glance)
 
     testImplementation(libs.junit)
     debugImplementation(libs.androidx.compose.ui.tooling)

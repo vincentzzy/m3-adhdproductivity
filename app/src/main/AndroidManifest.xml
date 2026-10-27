@@ -77,6 +77,11 @@
             android:name=".platform.PingReceiver"
             android:exported="false" />
 
+        <!-- Widget taps: explicit broadcast from our own PendingIntent. -->
+        <receiver
+            android:name=".platform.WidgetToggleReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".platform.BootReceiver"
             android:exported="false">
@@ -90,7 +95,7 @@
 
         <!-- Glance widget (~4x2). -->
         <receiver
-            android:name=".widget.NowWidgetReceiver"
+            android:name=".widget.NowWidgetProvider"
             android:label="@string/widget_name"
             android:exported="true">
             <intent-filter>

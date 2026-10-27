@@ -1,64 +1,38 @@
 package com.nowapp.platform
 
+import android.app.PendingIntent
 import android.content.Context
-import android.util.Log
-import androidx.glance.GlanceId
-import androidx.glance.action.ActionParameters
-import androidx.glance.appwidget.action.ActionCallback
-import com.nowapp.ServiceLocator
-import com.nowapp.widget.NowWidget
-import com.nowapp.widget.WidgetDiagnostics
+import android.content.Intent
 
 /**
- * Actions the home-screen widget can run without opening the app.
+ * The intents the widget fires, all built here so the widget code contains no
+ * flags, no request codes and no guessing.
  *
- * Every callback ends by asking the widget to re-render itself. Glance does not
- * do this implicitly: without the explicit `update`, the database changes and the
- * home screen keeps showing the old picture until something else happens to
- * trigger a refresh. That is indistinguishable from "the widget is broken".
+ * Every toggle is an explicit broadcast to our own receiver, so it survives the
+ * app process being dead — the system starts the process, the receiver writes the
+ * change, and the widget is repainted from the result.
  */
 object WidgetActions {
 
-    private const val TAG = "NowWidget"
+    const val ACTION_TOGGLE_DONE = "com.nowapp.action.WIDGET_TOGGLE_DONE"
+    const val EXTRA_TASK_ID = "com.nowapp.extra.TASK_ID"
 
-    val TaskIdKey = ActionParameters.Key<Long>("task_id")
+    private const val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
-    /** Ticks a task off straight from the widget. */
-    class ToggleDoneAction : ActionCallback {
-        override suspend fun onAction(
-            context: Context,
-            glanceId: GlanceId,
-            parameters: ActionParameters,
-        ) {
-            val taskId = parameters[TaskIdKey]
-            Log.i(TAG, "ToggleDoneAction taskId=$taskId glanceId=$glanceId")
-            if (taskId == null) {
-                WidgetDiagnostics.recordError("Tap arrived without a task id")
-                return
-            }
-            runCatching {
-                val task = ServiceLocator.tasks.allOnce().firstOrNull { it.id == taskId }
-                if (task == null) {
-                    WidgetDiagnostics.recordError("Task $taskId no longer exists")
-                    return
-                }
-                if (task.isDone) {
-                    ServiceLocator.tasks.uncomplete(taskId)
-                } else {
-                    ServiceLocator.tasks.complete(taskId)
-                }
-            }.onFailure {
-                Log.e(TAG, "ToggleDoneAction failed", it)
-                WidgetDiagnostics.recordError(it.javaClass.simpleName + ": " + (it.message ?: ""))
-            }
+    fun toggleTask(context: Context, taskId: Long): PendingIntent {
+        val intent = Intent(context, WidgetToggleReceiver::class.java)
+            .setAction(ACTION_TOGGLE_DONE)
+            .putExtra(EXTRA_TASK_ID, taskId)
+        return PendingIntent.getBroadcast(context, taskId.toInt(), intent, FLAGS)
+    }
 
-            // Re-render immediately, including the case where the row has to disappear.
-            runCatching { NowWidget().update(context.applicationContext, glanceId) }
-                .onSuccess { WidgetDiagnostics.recordRefresh() }
-                .onFailure {
-                    Log.e(TAG, "update after action failed", it)
-                    WidgetDiagnostics.recordError(it.javaClass.simpleName + ": " + (it.message ?: ""))
-                }
-        }
+    fun openActivity(
+        context: Context,
+        activity: Class<*>,
+        requestCode: Int,
+    ): PendingIntent {
+        val intent = Intent(context, activity)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        return PendingIntent.getActivity(context, requestCode, intent, FLAGS)
     }
 }
