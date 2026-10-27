@@ -214,6 +214,27 @@ app/src/test/java/com/nowapp/domain/
 
 ---
 
+## What is actually inside the APK
+
+Checked from the built artifact in CI (`aapt2 dump badging|permissions|xmltree`):
+
+```
+package            com.nowapp   versionCode 1   versionName 1.0
+minSdkVersion      26           targetSdkVersion 36   compileSdkVersion 37
+application-label  Now
+permissions        POST_NOTIFICATIONS · RECEIVE_BOOT_COMPLETED ·
+                   SCHEDULE_EXACT_ALARM · WAKE_LOCK · ACCESS_NETWORK_STATE ·
+                   FOREGROUND_SERVICE
+                   (no INTERNET, no location, no contacts, no storage)
+components         MainActivity (launcher) · QuickCaptureActivity ·
+                   ShareCaptureActivity · CaptureTileService (QS tile) ·
+                   NotificationActionReceiver · PingReceiver · BootReceiver ·
+                   NowWidgetReceiver (APPWIDGET_UPDATE + now_widget_info)
+```
+
+`ACCESS_NETWORK_STATE` is pulled in by WorkManager, which ships in AndroidX but is
+never given a network constraint and cannot open a socket.
+
 ## Accessibility
 
 - Every interactive element has a TalkBack description; custom controls
