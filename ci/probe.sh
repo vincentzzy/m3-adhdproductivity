@@ -1,55 +1,69 @@
 #!/usr/bin/env bash
 # One-shot API discovery: downloads the exact artifacts we pin and dumps the
-# public API we intend to call, so we never guess an expressive API signature.
+# public API surface we intend to call. Guarantees we never guess a new
+# Material Expressive / Glance signature.
 set -u
-OUT=/tmp/probe-report.txt
+OUT="${PROBE_OUT:-/tmp/probe-report.txt}"
 : > "$OUT"
-log() { echo "$@" | tee -a "$OUT"; }
+dump() { "$@" 2>&1 | head -n "${DUMP_LINES:-60}" | tee -a "$OUT"; }
+log()  { echo "$@" | tee -a "$OUT"; }
+fetch() { curl -sfL "$1" -o "$2" && log "OK $2 $(stat -c%s "$2")" || log "FAIL $1"; }
 G=https://dl.google.com/dl/android/maven2
-mkdir -p /tmp/probe && cd /tmp/probe
-get() { curl -sfL "$1" -o "$2" && log "OK $2 $(stat -c%s "$2")" || log "FAIL $1"; }
-get $G/androidx/compose/material3/material3-android/1.4.0/material3-android-1.4.0.aar m3.aar
-get $G/androidx/graphics/graphics-shapes/1.0.1/graphics-shapes-1.0.1.aar gs.aar
-get $G/androidx/glance/glance-appwidget/1.1.1/glance-appwidget-1.1.1.aar glance.aar
-log "===== ENV"
-log "which javap: $(command -v javap || echo MISSING)"
-log "which unzip: $(command -v unzip || echo MISSING)"
-java -version 2>&1 | head -3 | tee -a "$OUT"
-for f in m3.aar gs.aar glance.aar; do log "--- $f: $(file -b "$f" 2>/dev/null)"; done
-log "--- m3.aar top entries"; unzip -l m3.aar 2>&1 | head -12 | tee -a "$OUT"
-log "--- gs.aar top entries"; unzip -l gs.aar 2>&1 | head -12 | tee -a "$OUT"
-for a in m3 gs glance; do
-  if [ -f $a.aar ]; then mkdir -p $a && (cd $a && unzip -qo ../$a.aar classes.jar 2>/dev/null && log "unzipped $a"); fi
+WORK=/tmp/probe; rm -rf "$WORK"; mkdir -p "$WORK"; cd "$WORK"
+
+fetch $G/androidx/compose/material3/material3-android/1.4.0/material3-android-1.4.0.aar m3.aar
+fetch $G/androidx/graphics/graphics-shapes-android/1.0.1/graphics-shapes-android-1.0.1.aar gs.aar
+fetch $G/androidx/glance/glance-appwidget/1.1.1/glance-appwidget-1.1.1.aar glance.aar
+fetch $G/androidx/glance/glance-material3/1.1.1/glance-material3-1.1.1.aar glancem3.aar
+fetch $G/androidx/compose/compose-bom/2026.06.01/compose-bom-2026.06.01.pom bom.pom
+
+for a in m3 gs glance glancem3; do
+  if [ -f $a.aar ]; then mkdir -p $a && (cd $a && unzip -qo ../$a.aar classes.jar 2>/dev/null); fi
 done
-J3=/tmp/probe/m3/classes.jar; JGS=/tmp/probe/gs/classes.jar; JG=/tmp/probe/glance/classes.jar
-log "===== MATERIAL3 interesting classes"
-unzip -l $J3 2>/dev/null | grep -oE 'androidx/compose/material3/[A-Za-z0-9_]+Kt\.class' | grep -iE 'expressive|dynamic|motion|shape|buttongroup|splitbutton|wavy|loading|fabmenu|toggle|theme' | sort -u
-log "===== MaterialShapes"
-javap -classpath $J3 androidx.compose.material3.MaterialShapes 2>&1 | head -40
-log "===== MaterialThemeKt"
-javap -classpath $J3 androidx.compose.material3.MaterialThemeKt 2>&1 | head -30
-log "===== MotionScheme"
-javap -classpath $J3 androidx.compose.material3.MotionScheme 2>&1 | head -30
+J3=$WORK/m3/classes.jar; JGS=$WORK/gs/classes.jar; JG=$WORK/glance/classes.jar; JGM=$WORK/glancem3/classes.jar
+
+log "===== BOM pins (compose ui / material3)"
+grep -A2 -E "artifactId>(ui|material3|foundation|runtime)<" bom.pom | grep -E "artifactId|version" | paste - - | head -8
+
+log "===== material3: expressive-related top-level classes"
+unzip -l $J3 2>/dev/null | grep -oE 'androidx/compose/material3/[A-Za-z0-9_]+\$?[A-Za-z0-9_]*\.class' | sed 's/\.class//' | grep -iE 'expressive|motion|shapes|buttongroup|splitbutton|wavy|loading|fabmenu|togglebutton' | sort -u
+log "===== MaterialShapes (public members)"
+javap -public -classpath $J3 androidx.compose.material3.MaterialShapes 2>&1 | tee -a "$OUT"
+log "===== MaterialTheme (public members)"
+dump javap -public -classpath $J3 androidx.compose.material3.MaterialTheme
+log "===== MaterialExpressiveTheme signatures"
+dump javap -public -classpath $J3 androidx.compose.material3.MaterialExpressiveThemeKt
+log "===== MotionScheme + MotionSchemeKt"
+dump javap -public -classpath $J3 androidx.compose.material3.MotionScheme
+dump javap -public -classpath $J3 androidx.compose.material3.MotionSchemeKt
+log "===== dynamic color entry points"
+dump javap -public -classpath $J3 androidx.compose.material3.DynamicTonalPaletteKt
 log "===== ButtonGroup"
-javap -classpath $J3 'androidx.compose.material3.ButtonGroupKt' 2>&1 | head -30
+dump javap -public -classpath $J3 androidx.compose.material3.ButtonGroupKt
 log "===== SplitButton"
-javap -classpath $J3 'androidx.compose.material3.SplitButtonKt' 2>&1 | head -40
+dump javap -public -classpath $J3 androidx.compose.material3.SplitButtonKt
 log "===== FloatingActionButtonMenu"
-javap -classpath $J3 'androidx.compose.material3.FloatingActionButtonMenuKt' 2>&1 | head -20
-log "===== Wavy progress"
-javap -classpath $J3 androidx.compose.material3.ProgressIndicatorKt 2>&1 | grep -i wavy | head
+dump javap -public -classpath $J3 androidx.compose.material3.FloatingActionButtonMenuKt
+log "===== ToggleButton"
+unzip -l $J3 | grep -oE 'androidx/compose/material3/ToggleButton[A-Za-z0-9_]*\.class' | sort -u
+log "===== Wavy progress indicator"
+javap -public -classpath $J3 androidx.compose.material3.ProgressIndicatorKt 2>&1 | grep -iE "wavy" | head -12 | tee -a "$OUT"
 log "===== LoadingIndicator"
-javap -classpath $J3 androidx.compose.material3.LoadingIndicatorKt 2>&1 | head -20
-log "===== graphics-shapes Morph"
-javap -classpath $JGS androidx.graphics.shapes.Morph 2>&1 | head -20
-log "===== graphics-shapes MorphKt"
-javap -classpath $JGS androidx.graphics.shapes.MorphKt 2>&1 | head -20
-log "===== graphics-shapes classes"
-unzip -l $JGS 2>/dev/null | grep -oE 'androidx/graphics/shapes/[A-Za-z0-9_]+\.class' | sort -u | head -20
-log "===== glance appwidget classes"
-unzip -l $JG 2>/dev/null | grep -oE 'androidx/glance/appwidget/[A-Za-z0-9_]+\.class' | sort -u | head -60
+dump javap -public -classpath $J3 androidx.compose.material3.LoadingIndicatorKt
+log "===== graphics-shapes: classes"
+unzip -l $JGS | grep -oE 'androidx/graphics/shapes/[A-Za-z0-9_]+\.class' | sort -u
+log "===== Morph"
+dump javap -public -classpath $JGS androidx.graphics.shapes.Morph
+log "===== MorphKt"
+dump javap -public -classpath $JGS androidx.graphics.shapes.MorphKt
+log "===== RoundedPolygon"
+dump javap -public -classpath $JGS androidx.graphics.shapes.RoundedPolygon
+log "===== glance-appwidget classes"
+unzip -l $JG | grep -oE 'androidx/glance/appwidget/[A-Za-z0-9_]+\.class' | sort -u | head -70 | tee -a "$OUT"
 log "===== glance action classes"
-unzip -l $JG 2>/dev/null | grep -oE 'androidx/glance/action/[A-Za-z0-9_]+\.class' | sort -u | head -30
-log "===== dynamic color (material-color-utilities)"
-get $G/androidx/compose/material3/material3-android/1.4.0/material3-android-1.4.0.pom m3.pom
-javap -classpath $J3 androidx.compose.material3.DynamicTonalPaletteKt 2>&1 | head -20
+unzip -l $JG | grep -oE 'androidx/glance/action/[A-Za-z0-9_]+\.class' | sort -u | head -20 | tee -a "$OUT"
+log "===== GlanceTheme (glance-material3)"
+dump javap -public -classpath $JGM androidx.glance.material3.GlanceThemeKt
+log "===== GlanceAppWidget / Entity / provideContent"
+for c in androidx.glance.appwidget.GlanceAppWidget androidx.glance.appwidget.GlanceAppWidgetReceiver androidx.glance.GlanceModifier; do dump javap -public -classpath "$JG:$JGM" $c; done
+log "DONE"
