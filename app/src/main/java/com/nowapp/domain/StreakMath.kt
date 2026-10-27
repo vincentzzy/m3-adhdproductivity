@@ -45,18 +45,23 @@ object StreakMath {
         var lastCompleted = state.lastCompletedDate
         var protected = false
 
-        // Refill grace on the first evaluation of a new month.
-        val thisMonth = monthKey(today)
-        if (graceMonth != thisMonth) {
-            grace = StreakState.GRACE_DAYS_PER_MONTH
-            graceMonth = thisMonth
+        // Grace is per calendar month, so it is refilled whenever the walk crosses
+        // into a new month rather than only once at the start.
+        fun refillFor(date: LocalDate) {
+            val key = monthKey(date)
+            if (graceMonth != key) {
+                grace = StreakState.GRACE_DAYS_PER_MONTH
+                graceMonth = key
+            }
         }
 
+        refillFor(state.lastEvaluatedDate ?: today)
+
         // Walk every day that has not been evaluated yet, up to yesterday.
-        val from = (state.lastEvaluatedDate ?: today.minusDays(1)).plusDays(1)
-        var day = from
+        var day = (state.lastEvaluatedDate ?: today.minusDays(1)).plusDays(1)
         while (day.isBefore(today)) {
-            if (isMissing(state.lastCompletedDate, current, day)) {
+            refillFor(day)
+            if (isMissing(lastCompleted, current, day)) {
                 if (grace > 0) {
                     grace -= 1
                     protected = true
@@ -66,6 +71,8 @@ object StreakMath {
             }
             day = day.plusDays(1)
         }
+
+        refillFor(today)
 
         // Idempotent: calling advance() repeatedly on the same day must not inflate
         // the streak. The UI can therefore recompute freely.

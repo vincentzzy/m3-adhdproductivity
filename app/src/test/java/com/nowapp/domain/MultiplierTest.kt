@@ -37,8 +37,9 @@ class MultiplierTest {
 
     @Test
     fun `multiplier is clamped so one wild session cannot wreck planning`() {
+        // 300/5 = 60x, clamped to 4x, then 20 minutes becomes 80.
         val absurd = samples(10, 5, 300)
-        assertEquals(100, Multiplier.adjustedEstimate(20, Multiplier.multiplier(absurd)))
+        assertEquals(80, Multiplier.adjustedEstimate(20, Multiplier.multiplier(absurd)))
     }
 
     @Test

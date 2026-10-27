@@ -47,10 +47,14 @@ class StreakMathTest {
 
     @Test
     fun `grace refills at the start of a new month`() {
+        // October's two grace days are spent by the rest of the month being empty.
         var state = StreakMath.advance(StreakState(), day1, true)
-        state = StreakMath.advance(state, day1.plusDays(1), false) // spend nothing yet: same day
-        state = StreakMath.advance(state, LocalDate.of(2026, 11, 2), false)
+        assertEquals(2, state.graceDaysRemaining)
+        // November starts with a fresh pair of grace days.
+        state = StreakMath.advance(state, LocalDate.of(2026, 11, 1), true)
         assertEquals(StreakState.GRACE_DAYS_PER_MONTH, state.graceDaysRemaining)
+        // October's streak collapsed, and November begins its own count.
+        assertEquals(1, state.current)
     }
 
     @Test

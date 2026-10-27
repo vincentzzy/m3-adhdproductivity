@@ -78,6 +78,6 @@ class NotificationPolicyTest {
     fun `next anchor is the next time of day`() {
         val anchors = listOf(LocalTime.of(8, 30), LocalTime.of(14, 30), LocalTime.of(20, 0))
         assertEquals(30, NotificationPolicy.nextAnchorIn(LocalTime.of(14, 0), anchors))
-        assertEquals(270, NotificationPolicy.nextAnchorIn(LocalTime.of(9, 30), anchors))
+        assertEquals(300, NotificationPolicy.nextAnchorIn(LocalTime.of(9, 30), anchors))
     }
 }

@@ -40,7 +40,9 @@ object DayBudgetMath {
     fun elapsedFraction(now: LocalTime, dayStart: LocalTime, dayEnd: LocalTime): Float {
         val total = minutesBetween(dayStart, dayEnd)
         if (total <= 0) return 0f
-        val elapsed = minutesBetween(dayStart, now).coerceIn(0, total)
+        // Wrap-around arithmetic gives a large positive number for times before the
+        // window starts, so that case is handled explicitly.
+        val elapsed = if (now.isBefore(dayStart)) 0 else minutesBetween(dayStart, now).coerceIn(0, total)
         return elapsed.toFloat() / total.toFloat()
     }
 
