@@ -58,16 +58,16 @@ object NowShapeCatalog {
      * the morph is always well formed and the dial can morph every frame.
      */
     fun dialResting(): RoundedPolygon =
-        RoundedPolygon.star(numVertices = 9, innerRadius = 0.70f, rounding = CornerRounding(0.30f))
+        RoundedPolygon.star(numVerticesPerRadius = 9, innerRadius = 0.70f, rounding = CornerRounding(0.30f))
 
     fun dialFull(): RoundedPolygon =
-        RoundedPolygon.star(numVertices = 9, innerRadius = 0.93f, rounding = CornerRounding(0.45f))
+        RoundedPolygon.star(numVerticesPerRadius = 9, innerRadius = 0.93f, rounding = CornerRounding(0.45f))
 
     fun celebrationResting(): RoundedPolygon =
-        RoundedPolygon.star(numVertices = 12, innerRadius = 0.55f, rounding = CornerRounding(0.20f))
+        RoundedPolygon.star(numVerticesPerRadius = 12, innerRadius = 0.55f, rounding = CornerRounding(0.20f))
 
     fun celebrationFull(): RoundedPolygon =
-        RoundedPolygon.star(numVertices = 12, innerRadius = 0.95f, rounding = CornerRounding(0.40f))
+        RoundedPolygon.star(numVerticesPerRadius = 12, innerRadius = 0.95f, rounding = CornerRounding(0.40f))
 }
 
 /**
