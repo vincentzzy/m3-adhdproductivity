@@ -32,6 +32,7 @@ jobs:
       - name: Resolve and mask the temporary Drive upload session
         env:
           DISPATCH_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
+          COMMIT_SESSION: ${{ github.event.client_payload.drive_upload_session }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           SESSION="${DISPATCH_SESSION:-}"
@@ -45,7 +46,7 @@ jobs:
               echo "SESSION_RESOLVED=yes"
               echo "DRIVE_UPLOAD_SESSION=$SESSION"
             } >> "$GITHUB_ENV"
-          fi"
+          fi
 
       - uses: actions/setup-java@v5
         with:
