@@ -33,9 +33,26 @@ jobs:
           yes | "$ANDROID_SDKMANAGER" --licenses || true
           "$ANDROID_SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        id: assemble
+        run: |
+          set +e
+          ./gradlew --no-daemon assembleDebug > build.log 2>&1
+          result=$?
+          tail -n 30 build.log
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -n 30 build.log)
+            exit "$result"
+          fi
       - name: Run unit tests
-        run: ./gradlew --no-daemon test
+        run: |
+          set +e
+          ./gradlew --no-daemon test > test.log 2>&1
+          result=$?
+          tail -n 30 test.log
+          if [ "$result" -ne 0 ]; then
+            while IFS= read -r line; do echo "::error::$line"; done < <(tail -n 30 test.log)
+            exit "$result"
+          fi
       - name: Upload downloadable APK artifact
         uses: actions/upload-artifact@v4
         with:
