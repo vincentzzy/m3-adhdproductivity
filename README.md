@@ -107,7 +107,7 @@ overlay, never both.
 
 ```bash
 ./gradlew assembleDebug     # -> app/build/outputs/apk/debug/app-debug.apk
-./gradlew test              # 48 JVM unit tests
+./gradlew test              # 52 JVM unit tests
 ```
 
 `./gradlew` is a small bootstrap script that downloads the pinned Gradle 9.3.1
@@ -197,7 +197,8 @@ app/src/main/java/com/nowapp/
     theme/Theme.kt                   MaterialExpressiveTheme + hand-built dark scheme
     time/AnalogClock.kt
     time/TimeScreen.kt
-  widget/NowWidget.kt                Glance 4x2 widget: count, 3 checkboxes, capture
+  widget/NowWidget.kt                Glance 4x2 widget: count, 3 checkboxes, capture, self-refresh
+  widget/WidgetDiagnostics.kt        in-app record of widget refreshes and failures
 app/src/main/res/
   drawable/ic_launcher_foreground.xml
   drawable/ic_tile.xml
@@ -206,6 +207,7 @@ app/src/main/res/
   values/strings.xml
   values/themes.xml
   xml/now_widget_info.xml
+app/src/main/res/layout/widget_preview.xml   what the launcher's widget picker shows
 app/src/test/java/com/nowapp/domain/
   BreakdownEngineTest.kt
   BucketRulesTest.kt
@@ -214,6 +216,7 @@ app/src/test/java/com/nowapp/domain/
   NotificationPolicyTest.kt
   PaletteTest.kt
   StreakMathTest.kt
+  WidgetContractTest.kt             callback reflection contract, row behaviour
 ```
 
 ---

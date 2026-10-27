@@ -73,6 +73,56 @@ In the app: **Settings (gear) → Export**. Pick a folder; you get a readable
 `now-backup-YYYY-MM-DD.json` file. **Import** restores it. There is no cloud and no
 account — the file is the backup.
 
+## If the widget doesn't work
+
+The widget is the only part of Now that can fail silently, so it has its own
+diagnostics. Open the app → **gear icon → "Home-screen widget"** row. It always
+tells you one of:
+
+| What the row says | What it means | What to do |
+|---|---|---|
+| *No widget on the home screen* | The launcher never placed it. Nothing is wrong with the app. | Long-press home → Widgets → **Now — today** → drag it out. |
+| *1 widget on screen · Last refresh 09:41:07 · 4 pushes* | The widget exists and the app is successfully pushing updates to it. | If the picture is still stale, the launcher is the problem: remove and re-add the widget. |
+| *Last refresh 09:41:07 · 0 pushes* | The widget exists but the app has never pushed an update. | Tap **Refresh** in that row. If the count stays at 0, send me the logcat line (below). |
+| *Last error: …* | The widget code caught an exception. | Tell me the exact text — it names the failing step. |
+
+For a proper trace (needs a computer with `adb`):
+
+```bash
+adb logcat -c
+adb logcat | grep -iE "NowWidget|glance|appwidget"
+```
+
+Then remove and re-add the widget. A healthy run prints, in order:
+
+```
+receiver enabled
+onUpdate ids=1
+provideGlance id=... tasks=3 ok=true
+updateAll ok
+```
+
+Reading it:
+
+| Missing line | Meaning |
+|---|---|
+| nothing at all | the receiver is not registered in the installed APK — wrong build installed |
+| `onUpdate` but no `provideGlance` | Glance could not compose a RemoteView; the exception appears in the same log |
+| `provideGlance … ok=false` | the database could not be read |
+| `provideGlance` but never `updateAll ok` | the refresh path is failing; the error is logged right after |
+
+Two more checks that need no logcat:
+
+```bash
+adb shell dumpsys appwidget | grep -A6 com.nowapp     # is it registered, and is it bound?
+adb shell am broadcast -a android.appwidget.action.APPWIDGET_UPDATE \
+  -n com.nowapp/.widget.NowWidgetReceiver             # force a refresh now
+```
+
+The widget is a **photograph, not a live view**: it re-renders when the app says
+so. If it looks stale after a system update or a launcher restart, remove and
+re-add it — that is the launcher keeping an old RemoteView, not the app.
+
 ## Troubleshooting
 
 | Symptom | Fix |
