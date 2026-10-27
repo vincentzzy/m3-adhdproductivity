@@ -33,8 +33,8 @@ jobs:
           yes | "$ANDROID_SDKMANAGER" --licenses || true
           set +e
           "$ANDROID_SDKMANAGER" --list > sdk-list.log 2>&1
-          grep -E 'platforms;android-37|build-tools;37|platform-tools' sdk-list.log | tail -n 20
-          "$ANDROID_SDKMANAGER" "platforms;android-37" "build-tools;37.0.0" "platform-tools" > sdk-install.log 2>&1
+          grep -E 'platforms;android-36|build-tools;36|platform-tools' sdk-list.log | tail -n 20
+          "$ANDROID_SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools" > sdk-install.log 2>&1
           result=$?
           tail -n 25 sdk-install.log
           if [ "$result" -ne 0 ]; then
