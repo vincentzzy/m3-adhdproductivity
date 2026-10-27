@@ -11,6 +11,13 @@ get() { curl -sfL "$1" -o "$2" && log "OK $2 $(stat -c%s "$2")" || log "FAIL $1"
 get $G/androidx/compose/material3/material3-android/1.4.0/material3-android-1.4.0.aar m3.aar
 get $G/androidx/graphics/graphics-shapes/1.0.1/graphics-shapes-1.0.1.aar gs.aar
 get $G/androidx/glance/glance-appwidget/1.1.1/glance-appwidget-1.1.1.aar glance.aar
+log "===== ENV"
+log "which javap: $(command -v javap || echo MISSING)"
+log "which unzip: $(command -v unzip || echo MISSING)"
+java -version 2>&1 | head -3 | tee -a "$OUT"
+for f in m3.aar gs.aar glance.aar; do log "--- $f: $(file -b "$f" 2>/dev/null)"; done
+log "--- m3.aar top entries"; unzip -l m3.aar 2>&1 | head -12 | tee -a "$OUT"
+log "--- gs.aar top entries"; unzip -l gs.aar 2>&1 | head -12 | tee -a "$OUT"
 for a in m3 gs glance; do
   if [ -f $a.aar ]; then mkdir -p $a && (cd $a && unzip -qo ../$a.aar classes.jar 2>/dev/null && log "unzipped $a"); fi
 done
