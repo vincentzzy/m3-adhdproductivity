@@ -5,19 +5,11 @@ browser. The whole app is about 16 MB and works completely offline.
 
 ## 1. Download the app file
 
-Either link works. Both are the same build.
-
-**Google Drive (recommended on a phone — no login, opens the save dialog directly):**
-
-**https://drive.google.com/file/d/1mNctoyXyp_CD1OoqjsC0gGgCzpWBlbeN/view?usp=drivesdk**
-
-Tap the download arrow (or the ⋮ menu → *Download*), then confirm *Download anyway*.
-
-**GitHub release (always the newest build):**
-
 **https://github.com/vincentzzy/m3-adhdproductivity/releases/download/now-debug/app-debug.apk**
 
-Every push republishes this address, so it never goes stale.
+Every push republishes this exact address, so it is always the newest build. (A
+Google Drive copy may also exist; it is a snapshot of one build and can lag, so
+prefer this link.)
 
 If you prefer clicking: go to
 `https://github.com/vincentzzy/m3-adhdproductivity/releases` and tap the newest
@@ -79,6 +71,9 @@ The widget is the only part of Now that can fail silently, so it has its own
 diagnostics. Open the app → **gear icon → "Home-screen widget"** row. It always
 tells you one of:
 
+The widget is a plain `RemoteViews` layout now — it has no composition step, so
+"Couldn't add widget" can no longer come from the app's drawing code.
+
 | What the row says | What it means | What to do |
 |---|---|---|
 | *No widget on the home screen* | The launcher never placed it. Nothing is wrong with the app. | Long-press home → Widgets → **Now — today** → drag it out. |
@@ -96,32 +91,33 @@ adb logcat | grep -iE "NowWidget|glance|appwidget"
 Then remove and re-add the widget. A healthy run prints, in order:
 
 ```
-receiver enabled
+onEnabled
 onUpdate ids=1
-provideGlance id=... tasks=3 ok=true
-updateAll ok
+refreshed 1 widget(s)
+toggle received taskId=12        (only when you tap a checkbox)
 ```
 
 Reading it:
 
 | Missing line | Meaning |
 |---|---|
-| nothing at all | the receiver is not registered in the installed APK — wrong build installed |
-| `onUpdate` but no `provideGlance` | Glance could not compose a RemoteView; the exception appears in the same log |
-| `provideGlance … ok=false` | the database could not be read |
-| `provideGlance` but never `updateAll ok` | the refresh path is failing; the error is logged right after |
+| nothing at all | the provider is not registered in the installed APK — wrong build installed |
+| `onUpdate` but never `refreshed` | the repaint failed; the exception is logged immediately after |
+| `toggle received` missing when you tap | the tap never reached the app; re-add the widget |
+| `refresh skipped: no widget instances` | the launcher thinks the widget is gone; remove and re-add |
 
 Two more checks that need no logcat:
 
 ```bash
 adb shell dumpsys appwidget | grep -A6 com.nowapp     # is it registered, and is it bound?
 adb shell am broadcast -a android.appwidget.action.APPWIDGET_UPDATE \
-  -n com.nowapp/.widget.NowWidgetReceiver             # force a refresh now
+  -n com.nowapp/.widget.NowWidgetProvider             # force a refresh now
 ```
 
 The widget is a **photograph, not a live view**: it re-renders when the app says
-so. If it looks stale after a system update or a launcher restart, remove and
-re-add it — that is the launcher keeping an old RemoteView, not the app.
+so, which it does on every data change, on every tap, and every six hours. If it
+looks stale after a system update or a launcher restart, remove and re-add it —
+that is the launcher keeping an old RemoteView, not the app.
 
 ## Troubleshooting
 

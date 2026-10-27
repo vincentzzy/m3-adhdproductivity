@@ -12,11 +12,11 @@ No tags. No projects. No kanban. No priorities. No inbox-zero ritual. No red.
 
 **Download / install:** see [INSTALL.md](INSTALL.md).
 
-- Google Drive mirror (easiest from a phone, no login needed):
-  **https://drive.google.com/file/d/1mNctoyXyp_CD1OoqjsC0gGgCzpWBlbeN/view?usp=drivesdk**
-  — 16,158,567 bytes, built from commit `fb51c10`, sha-checked below.
-- GitHub release (rebuilt on every push):
-  `https://github.com/vincentzzy/m3-adhdproductivity/releases/download/now-debug/app-debug.apk`
+`https://github.com/vincentzzy/m3-adhdproductivity/releases/download/now-debug/app-debug.apk`
+
+Always the newest build — every push republishes this exact address. A Google Drive
+mirror exists for phones where the GitHub download is awkward, but it is a
+snapshot: the release link is the only one that is never stale.
 
 ---
 
@@ -65,7 +65,7 @@ Data                               Room (tasks, focus_sessions, streak, anchors)
                                    DataStore Preferences (calm mode, quiet hours, ping budget)
         │
 Platform                           ongoing notification + action receiver · exact-alarm pings
-                                   WorkManager housekeeping · QS tile · share target · Glance widget
+                                   WorkManager housekeeping · QS tile · share target · RemoteViews widget
 ```
 
 - **Single activity**, state-based tabs (no navigation-compose).
@@ -107,7 +107,7 @@ overlay, never both.
 
 ```bash
 ./gradlew assembleDebug     # -> app/build/outputs/apk/debug/app-debug.apk
-./gradlew test              # 52 JVM unit tests
+./gradlew test              # 55 JVM unit tests
 ```
 
 `./gradlew` is a small bootstrap script that downloads the pinned Gradle 9.3.1
@@ -177,6 +177,7 @@ app/src/main/java/com/nowapp/
     PingReceiver.kt                  anchor ping, budget-checked
     PingScheduler.kt                 exact alarm, graceful inexact fallback
     QuickCaptureActivity.kt          floating capture surface
+    WidgetToggleReceiver.kt          completes a task from the widget, then repaints
     ShareCaptureActivity.kt          share-sheet target, captures straight to Later
     WidgetActions.kt                 widget checkbox callback
   ui/
@@ -197,8 +198,9 @@ app/src/main/java/com/nowapp/
     theme/Theme.kt                   MaterialExpressiveTheme + hand-built dark scheme
     time/AnalogClock.kt
     time/TimeScreen.kt
-  widget/NowWidget.kt                Glance 4x2 widget: count, 3 checkboxes, capture, self-refresh
-  widget/WidgetDiagnostics.kt        in-app record of widget refreshes and failures
+  widget/NowWidgetProvider.kt        4x2 RemoteViews widget: count, 3 checkboxes, capture, self-refresh
+  widget/WidgetModel.kt              pure decision of what the widget shows (unit tested)
+  widget/WidgetDiagnostics.kt        file-backed flight recorder for widget refreshes/failures
 app/src/main/res/
   drawable/ic_launcher_foreground.xml
   drawable/ic_tile.xml
@@ -207,7 +209,10 @@ app/src/main/res/
   values/strings.xml
   values/themes.xml
   xml/now_widget_info.xml
+app/src/main/res/layout/widget_today.xml     the widget itself (RemoteViews, 3 fixed row slots)
 app/src/main/res/layout/widget_preview.xml   what the launcher's widget picker shows
+app/src/main/res/drawable/widget_bg.xml      rounded widget background
+app/src/main/res/drawable/widget_pill.xml    the circular checkbox / + surface
 app/src/test/java/com/nowapp/domain/
   BreakdownEngineTest.kt
   BucketRulesTest.kt
@@ -216,7 +221,7 @@ app/src/test/java/com/nowapp/domain/
   NotificationPolicyTest.kt
   PaletteTest.kt
   StreakMathTest.kt
-  WidgetContractTest.kt             callback reflection contract, row behaviour
+  WidgetModelTest.kt               widget rows, header, footer, empty state
 ```
 
 ---
@@ -236,7 +241,8 @@ permissions        POST_NOTIFICATIONS · RECEIVE_BOOT_COMPLETED ·
 components         MainActivity (launcher) · QuickCaptureActivity ·
                    ShareCaptureActivity · CaptureTileService (QS tile) ·
                    NotificationActionReceiver · PingReceiver · BootReceiver ·
-                   NowWidgetReceiver (APPWIDGET_UPDATE + now_widget_info)
+                   WidgetToggleReceiver · NowWidgetProvider
+                   (APPWIDGET_UPDATE + now_widget_info, initialLayout widget_today)
 ```
 
 `ACCESS_NETWORK_STATE` is pulled in by WorkManager, which ships in AndroidX but is
