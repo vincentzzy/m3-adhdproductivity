@@ -147,10 +147,11 @@ object Notifications {
 
         // FLAG_NO_CLEAR is the strongest "do not swipe me away" signal an app can
         // set for a non-foreground notification. Android 14+ still lets the user
-        // dismiss it manually; NotificationUpdater re-posts within 15 minutes.
-        builder.setFlag(android.app.Notification.FLAG_NO_CLEAR, true)
+        // dismiss it manually; the app re-posts on every change and every 6 hours.
+        val notification = builder.build()
+        notification.flags = notification.flags or android.app.Notification.FLAG_NO_CLEAR
 
-        runCatching { manager.notify(ONGOING_ID, builder.build()) }
+        runCatching { manager.notify(ONGOING_ID, notification) }
     }
 
     /** A single ping that names exactly one task, never a list. */

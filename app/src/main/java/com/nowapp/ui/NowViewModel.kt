@@ -6,6 +6,7 @@ import com.nowapp.ServiceLocator
 import com.nowapp.data.Backup
 import com.nowapp.data.FocusSession
 import com.nowapp.data.Prefs
+import com.nowapp.data.toDomain
 import com.nowapp.data.db.AnchorEntity
 import com.nowapp.domain.Breakdown
 import com.nowapp.domain.BreakdownEngine
@@ -199,7 +200,7 @@ class NowViewModel : ViewModel() {
             val result = runCatching {
                 val snapshot = Backup.decode(json)
                 tasksRepo.replaceAllRaw(snapshot.tasks, snapshot.sessions)
-                snapshot.streak?.let { streakRepo.replace(com.nowapp.data.toDomain(it)) }
+                snapshot.streak?.let { streakRepo.replace(it.toDomain()) }
                 if (snapshot.anchors.isNotEmpty()) anchorRepo.replaceAll(snapshot.anchors)
                 snapshot.tasks.size
             }

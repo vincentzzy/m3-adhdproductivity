@@ -74,7 +74,6 @@ fun NowScreen(
 ) {
     val tasks by vm.tasks.collectAsStateWithLifecycle()
     val prefs by vm.prefs.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     val nowTask = BucketRules.nowTask(tasks)
     val todayTasks = BucketRules.todayTasks(tasks)
@@ -85,6 +84,7 @@ fun NowScreen(
     var intoToday by rememberSaveable { mutableStateOf(false) }
     var laterExpanded by rememberSaveable { mutableStateOf(false) }
     var hoverZone by remember { mutableStateOf<Bucket?>(null) }
+    val captureFocus = remember { FocusRequester() }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         if (!spoken.isNullOrBlank()) {
@@ -93,7 +93,6 @@ fun NowScreen(
         }
     }
     val zones = remember { mutableStateMapOf<Bucket, Rect>() }
-    val captureFocus = remember { FocusRequester() }
 
     fun submit() {
         if (captureText.isBlank()) return
