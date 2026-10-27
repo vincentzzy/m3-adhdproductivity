@@ -56,6 +56,7 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import com.nowapp.ui.NowViewModel
 import com.nowapp.ui.components.QuietTag
+import com.nowapp.ui.components.MinutePickerDialog
 import com.nowapp.ui.components.NowShapeCatalog
 import com.nowapp.ui.components.SectionHeader
 import java.time.LocalDate
@@ -84,6 +85,7 @@ fun NowScreen(
     var intoToday by rememberSaveable { mutableStateOf(false) }
     var laterExpanded by rememberSaveable { mutableStateOf(false) }
     var hoverZone by remember { mutableStateOf<Bucket?>(null) }
+    var estimateTarget by remember { mutableStateOf<Task?>(null) }
     val captureFocus = remember { FocusRequester() }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
@@ -137,6 +139,7 @@ fun NowScreen(
             if (showWelcomeBack) {
                 WelcomeBackCard(
                     daysAway = daysAway,
+                    todayCount = todayTasks.size + if (nowTask != null) 1 else 0,
                     onDismiss = { vm.ackWelcomeBack() },
                 )
             }
@@ -184,6 +187,12 @@ fun NowScreen(
                         onHoverZone = { hoverZone = it },
                         onBreakdown = { vm.applyBreakdown(task.id) },
                         onStartFocus = { onStartFocus(task.id, 25) },
+                        onSetEstimate = { estimateTarget = task },
+                        onSetDeadline = {
+                            // One tap: a hard deadline two hours out. Enough to make
+                            // the Time screen and escalation meaningful without a picker.
+                            vm.setDue(task.id, System.currentTimeMillis() + 2 * 60 * 60 * 1000L, hard = true)
+                        },
                         onDelete = { vm.delete(task.id) },
                         meta = task.estimateMinutes?.let { "~${it}m" },
                         carriedOver = task.createdAt < dayStart,
@@ -253,6 +262,10 @@ fun NowScreen(
                             onHoverZone = { hoverZone = it },
                             onBreakdown = { vm.applyBreakdown(task.id) },
                             onStartFocus = { onStartFocus(task.id, 25) },
+                            onSetEstimate = { estimateTarget = task },
+                            onSetDeadline = {
+                                vm.setDue(task.id, System.currentTimeMillis() + 2 * 60 * 60 * 1000L, hard = true)
+                            },
                             onDelete = { vm.delete(task.id) },
                             meta = task.estimateMinutes?.let { "~${it}m" },
                         )
@@ -271,6 +284,23 @@ fun NowScreen(
 
             Spacer(Modifier.height(40.dp))
         }
+    }
+
+    estimateTarget?.let { target ->
+        MinutePickerDialog(
+            title = "How long will it take?",
+            subtitle = target.title,
+            initial = target.estimateMinutes,
+            onDismiss = { estimateTarget = null },
+            onPick = { minutes ->
+                vm.setEstimate(target.id, minutes)
+                estimateTarget = null
+            },
+            onClear = {
+                vm.setEstimate(target.id, null)
+                estimateTarget = null
+            },
+        )
     }
 }
 
@@ -399,7 +429,7 @@ private fun EmptySlotRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun WelcomeBackCard(daysAway: Long, onDismiss: () -> Unit) {
+private fun WelcomeBackCard(daysAway: Long, todayCount: Int, onDismiss: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -414,7 +444,12 @@ private fun WelcomeBackCard(daysAway: Long, onDismiss: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
-            text = "It has been $daysAway days. Nothing was lost and nothing is piling up. Here are three things.",
+            text = "It has been $daysAway days. Nothing was lost and nothing is piling up. " +
+                if (todayCount == 0) {
+                    "There is nothing on today, and that is fine."
+                } else {
+                    "Here ${if (todayCount == 1) "is the one thing" else "are the $todayCount things"} on today."
+                },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )

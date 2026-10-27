@@ -80,6 +80,11 @@ class TaskRepository(
         taskDao.update(task.copy(title = title.trim().take(200)))
     }
 
+    suspend fun setActual(taskId: Long, minutes: Int?) {
+        val task = taskDao.byId(taskId) ?: return
+        taskDao.update(task.copy(actualMinutes = minutes?.takeIf { it > 0 }))
+    }
+
     suspend fun setEstimate(taskId: Long, minutes: Int?) {
         val task = taskDao.byId(taskId) ?: return
         taskDao.update(task.copy(estimateMinutes = minutes?.takeIf { it > 0 }))

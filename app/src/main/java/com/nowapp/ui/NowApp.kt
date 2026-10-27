@@ -50,6 +50,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nowapp.data.Prefs
 import com.nowapp.ui.components.CelebrationOverlay
+import com.nowapp.ui.components.MinutePickerDialog
 import com.nowapp.ui.focus.FocusScreen
 import com.nowapp.ui.now.NowScreen
 import com.nowapp.ui.progress.ProgressScreen
@@ -92,6 +93,8 @@ private fun MainSurface(vm: NowViewModel, prefs: Prefs, openFocusOnLaunch: Boole
 
     val anchors by vm.anchors.collectAsStateWithLifecycle()
     val justCompleted by vm.justCompleted.collectAsStateWithLifecycle()
+    val allTasks by vm.tasks.collectAsStateWithLifecycle()
+    val pendingActual by vm.pendingActual.collectAsStateWithLifecycle()
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -224,6 +227,19 @@ private fun MainSurface(vm: NowViewModel, prefs: Prefs, openFocusOnLaunch: Boole
 
         justCompleted?.let {
             CelebrationOverlay(text = "That counts.", onFinished = { vm.clearJustCompleted() })
+        }
+
+        // Only ever shown for a task that had an estimate. Skipping is one tap and
+        // costs nothing; this is how the personal multiplier earns its samples.
+        val actualTarget = allTasks.firstOrNull { it.id == pendingActual }
+        if (actualTarget != null && justCompleted == null) {
+            MinutePickerDialog(
+                title = "How long did that take?",
+                subtitle = actualTarget.title,
+                initial = actualTarget.estimateMinutes,
+                onDismiss = { vm.clearPendingActual() },
+                onPick = { minutes -> vm.setActual(actualTarget.id, minutes) },
+            )
         }
 
         pendingImport?.let { text ->

@@ -48,7 +48,7 @@ object NotificationUpdater {
 
                 Notifications.showOngoing(
                     context = app,
-                    todayCount = todayTasks.size,
+                    todayCount = todayTasks.size + if (nowTask != null) 1 else 0,
                     topTaskId = top?.id,
                     topTaskTitle = top?.title,
                     snoozedUntilText = snoozeText,

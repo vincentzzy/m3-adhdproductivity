@@ -58,6 +58,8 @@ fun TaskRow(
     onHoverZone: (Bucket?) -> Unit,
     onBreakdown: () -> Unit,
     onStartFocus: () -> Unit,
+    onSetEstimate: () -> Unit,
+    onSetDeadline: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     meta: String? = null,
@@ -133,6 +135,8 @@ fun TaskRow(
                 DropdownMenuItem(text = { Text("Put in Later") }, onClick = { expanded = false; onMove(Bucket.LATER) })
             }
             DropdownMenuItem(text = { Text("Break it down") }, onClick = { expanded = false; onBreakdown() })
+            DropdownMenuItem(text = { Text("How long will it take?") }, onClick = { expanded = false; onSetEstimate() })
+            DropdownMenuItem(text = { Text("Due in two hours") }, onClick = { expanded = false; onSetDeadline() })
             DropdownMenuItem(text = { Text("25 minute focus") }, onClick = { expanded = false; onStartFocus() })
             DropdownMenuItem(text = { Text("Delete") }, onClick = { expanded = false; onDelete() })
         }

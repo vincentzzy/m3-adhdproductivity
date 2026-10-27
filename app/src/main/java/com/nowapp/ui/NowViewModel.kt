@@ -64,6 +64,13 @@ class NowViewModel : ViewModel() {
     private val _justCompleted = MutableStateFlow<Long?>(null)
     val justCompleted: StateFlow<Long?> = _justCompleted.asStateFlow()
 
+    /**
+     * Set when a task with an estimate is completed: the UI offers one optional
+     * "how long did that take?" tap. Skipping is the default and costs nothing.
+     */
+    private val _pendingActual = MutableStateFlow<Long?>(null)
+    val pendingActual: StateFlow<Long?> = _pendingActual.asStateFlow()
+
     fun capture(title: String, intoToday: Boolean = false) {
         if (title.isBlank()) return
         viewModelScope.launch {
@@ -75,9 +82,24 @@ class NowViewModel : ViewModel() {
 
     fun complete(id: Long, actualMinutes: Int? = null) {
         viewModelScope.launch {
+            val task = tasks.first().firstOrNull { it.id == id }
             tasksRepo.complete(id, actualMinutes)
             _justCompleted.value = id
+            if (actualMinutes == null && task?.estimateMinutes != null) {
+                _pendingActual.value = id
+            }
             prefsRepo.setLastActiveDay(LocalDate.now().toString())
+        }
+    }
+
+    fun clearPendingActual() {
+        _pendingActual.value = null
+    }
+
+    fun setActual(id: Long, minutes: Int) {
+        viewModelScope.launch {
+            tasksRepo.setActual(id, minutes)
+            _pendingActual.value = null
         }
     }
 
