@@ -1,0 +1,40 @@
+name: versions
+on: push
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Google Maven + Maven Central versions
+        run: |
+          set -x
+          G=https://dl.google.com/dl/android/maven2
+          M=https://repo1.maven.org/maven2
+          for p in \
+            com/android/tools/build/gradle \
+            androidx/compose/compose-bom \
+            androidx/compose/material3/material3 \
+            androidx/room/room-runtime \
+            androidx/glance/glance-appwidget \
+            androidx/datastore/datastore-preferences \
+            androidx/work/work-runtime-ktx \
+            androidx/graphics/graphics-shapes \
+            androidx/activity/activity-compose \
+            androidx/lifecycle/lifecycle-runtime-compose \
+            androidx/navigation/navigation-compose \
+            androidx/core/core-ktx \
+            androidx/core/core-splashscreen \
+            androidx/test/ext/junit \
+            androidx/test/espresso/espresso-core ; do
+            echo "### GOOGLE $p"
+            curl -s "$G/$p/maven-metadata.xml" | grep -oE '<version>[^<]+' | sed 's/<version>//' | tail -25 | tr '\n' ' '
+            echo
+          done
+          for p in \
+            org/jetbrains/kotlin/kotlin-gradle-plugin \
+            com/google/devtools/ksp/symbol-processing-api ; do
+            echo "### CENTRAL $p"
+            curl -s "$M/$p/maven-metadata.xml" | grep -oE '<version>[^<]+' | sed 's/<version>//' | tail -20 | tr '\n' ' '
+            echo
+          done
+          echo "### gradle wrapper available dists (services.gradle.org)"
+          curl -s https://services.gradle.org/versions/current | head -20
