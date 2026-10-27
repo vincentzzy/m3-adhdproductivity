@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.update
 import com.nowapp.ServiceLocator
 import com.nowapp.widget.NowWidget
 import com.nowapp.widget.WidgetDiagnostics
