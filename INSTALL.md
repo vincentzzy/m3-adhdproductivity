@@ -5,12 +5,19 @@ browser. The whole app is about 16 MB and works completely offline.
 
 ## 1. Download the app file
 
-On the phone, open this link:
+Either link works. Both are the same build.
+
+**Google Drive (recommended on a phone — no login, opens the save dialog directly):**
+
+**https://drive.google.com/file/d/1mNctoyXyp_CD1OoqjsC0gGgCzpWBlbeN/view?usp=drivesdk**
+
+Tap the download arrow (or the ⋮ menu → *Download*), then confirm *Download anyway*.
+
+**GitHub release (always the newest build):**
 
 **https://github.com/vincentzzy/m3-adhdproductivity/releases/download/now-debug/app-debug.apk**
 
-It is the newest automatic build; every update to the app republishes it at the
-same address, so this link never goes stale.
+Every push republishes this address, so it never goes stale.
 
 If you prefer clicking: go to
 `https://github.com/vincentzzy/m3-adhdproductivity/releases` and tap the newest

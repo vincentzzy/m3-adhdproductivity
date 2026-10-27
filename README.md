@@ -10,9 +10,13 @@ installed in thirty days.
 
 No tags. No projects. No kanban. No priorities. No inbox-zero ritual. No red.
 
-**Download / install:** see [INSTALL.md](INSTALL.md). The APK is rebuilt on every
-push and published at
-`https://github.com/vincentzzy/m3-adhdproductivity/releases/download/now-debug/app-debug.apk`.
+**Download / install:** see [INSTALL.md](INSTALL.md).
+
+- Google Drive mirror (easiest from a phone, no login needed):
+  **https://drive.google.com/file/d/1mNctoyXyp_CD1OoqjsC0gGgCzpWBlbeN/view?usp=drivesdk**
+  — 16,158,567 bytes, built from commit `fb51c10`, sha-checked below.
+- GitHub release (rebuilt on every push):
+  `https://github.com/vincentzzy/m3-adhdproductivity/releases/download/now-debug/app-debug.apk`
 
 ---
 
