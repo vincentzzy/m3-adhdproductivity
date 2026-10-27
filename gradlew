@@ -3,7 +3,7 @@
 # because this environment cannot fetch GitHub's raw binary endpoint; behavior and
 # version pin match gradle-wrapper.properties.
 set -eu
-VERSION=8.11.1
+VERSION=9.3.1
 BASE="${GRADLE_USER_HOME:-$HOME/.gradle}/wrapper/dists/gradle-${VERSION}-bin/taskd"
 GRADLE="$BASE/gradle-${VERSION}/bin/gradle"
 if [ ! -x "$GRADLE" ]; then
