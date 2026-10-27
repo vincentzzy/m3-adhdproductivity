@@ -5,7 +5,10 @@ on:
     branches: [main, 'arena/**']
   pull_request:
   release:
-    types: [published]
+    # 'edited' is the agent's delivery channel: the temporary Drive resumable
+    # session is written into the release notes, used once, then removed again.
+    # Nothing is committed to the repository and no long-lived credential exists.
+    types: [published, edited]
   workflow_dispatch:
     inputs:
       drive_upload_session:
@@ -26,11 +29,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Mask temporary Drive upload session
-        if: (github.event_name == 'workflow_dispatch' && inputs.drive_upload_session != '') || github.event_name == 'repository_dispatch'
+      - name: Resolve and mask the temporary Drive upload session
+        if: (github.event_name == 'workflow_dispatch' && inputs.drive_upload_session != '') || github.event_name == 'repository_dispatch' || github.event_name == 'release'
         env:
           DRIVE_UPLOAD_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
-        run: echo "::add-mask::$DRIVE_UPLOAD_SESSION"
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          if [ -z "${DRIVE_UPLOAD_SESSION:-}" ] && [ -n "${RELEASE_BODY:-}" ]; then
+            DRIVE_UPLOAD_SESSION="$(printf '%s' "$RELEASE_BODY" | grep -o 'drive-session: [^ ]*' | head -1 | sed 's/drive-session: //')"
+          fi
+          if [ -n "${DRIVE_UPLOAD_SESSION:-}" ]; then
+            echo "::add-mask::$DRIVE_UPLOAD_SESSION"
+            echo "SESSION_RESOLVED=yes" >> "$GITHUB_ENV"
+          fi"
 
       - uses: actions/setup-java@v5
         with:
@@ -150,7 +161,7 @@ jobs:
           files: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK directly to Google Drive
-        if: (github.event_name == 'workflow_dispatch' && inputs.drive_upload_session != '') || github.event_name == 'repository_dispatch'
+        if: env.SESSION_RESOLVED == 'yes' && github.event_name == 'release'
         env:
           DRIVE_UPLOAD_SESSION: ${{ inputs.drive_upload_session || github.event.client_payload.drive_upload_session }}
         run: |
