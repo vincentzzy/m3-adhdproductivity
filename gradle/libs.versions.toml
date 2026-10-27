@@ -2,7 +2,7 @@
 # Google Maven / Maven Central on 2026-10-27 and their `minCompileSdk` AAR
 # metadata was checked against compileSdk = 37.
 [versions]
-agp = "9.0.1"
+agp = "9.1.0"
 kotlin = "2.2.10"
 ksp = "2.2.10-2.0.2"
 # Compose BOM pins ui/foundation/runtime; material3 is pinned separately because

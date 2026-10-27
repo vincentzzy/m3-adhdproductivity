@@ -62,7 +62,7 @@ jobs:
           if [ $rc -ne 0 ]; then
             {
               echo "=== COMPILER / BUILD ERRORS"
-              grep -E "^e: |^w: .*error|error:|What went wrong|Execution failed|Unresolved reference|Cannot access|Could not resolve|Could not find|No matching variant|FAILURE:|Caused by" build.log | head -250
+              grep -E "^e: |error:|What went wrong|Execution failed|Unresolved reference|Cannot access|Could not resolve|Could not find|No matching variant|FAILURE:|requires Android Gradle|requires compileSdk|Minimum supported Gradle|requires.*Gradle" build.log | head -250
               echo
               echo "=== TAIL"
               tail -60 build.log
